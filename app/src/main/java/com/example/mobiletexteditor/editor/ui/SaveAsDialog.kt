@@ -1,14 +1,12 @@
-/**
- * File: SaveAsDialog.kt
- * Purpose: Dialog allowing users to specify custom file names and select character encodings
- *          (UTF-8, UTF-16, US-ASCII, ISO-8859-1) before saving the file to storage.
- * Group Member: Member 1 — Editor Engine & File Management
- */
 package com.example.mobiletexteditor.editor.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SaveAs
@@ -33,13 +31,13 @@ import androidx.compose.ui.unit.dp
 import com.example.mobiletexteditor.editor.model.FileEncoding
 
 /**
- * Save As dialog with file name input and character encoding dropdown selection.
+ * Dialog allowing users to save files with a custom name and text character encoding.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaveAsDialog(
     initialFileName: String,
-    initialEncoding: FileEncoding,
+    initialEncoding: FileEncoding = FileEncoding.UTF_8,
     onDismiss: () -> Unit,
     onConfirm: (fileName: String, encoding: FileEncoding) -> Unit
 ) {
@@ -67,13 +65,13 @@ fun SaveAsDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 OutlinedTextField(
                     value = fileName,
                     onValueChange = { fileName = it },
                     label = { Text("File Name") },
-                    placeholder = { Text("e.g. MyScript.kt, Notes.md") },
+                    placeholder = { Text("e.g. MyCode.kt, Readme.md") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -114,9 +112,11 @@ fun SaveAsDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val finalName = fileName.trim().ifBlank { "Untitled.kt" }
-                    onConfirm(finalName, selectedEncoding)
-                }
+                    if (fileName.isNotBlank()) {
+                        onConfirm(fileName.trim(), selectedEncoding)
+                    }
+                },
+                enabled = fileName.isNotBlank()
             ) {
                 Text("Save")
             }

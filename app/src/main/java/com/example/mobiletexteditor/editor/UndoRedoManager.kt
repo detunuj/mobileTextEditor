@@ -1,19 +1,14 @@
-/**
- * File: UndoRedoManager.kt
- * Purpose: Dedicated in-memory stack manager tracking granular edit history during the active session.
- *          Provides reactive Compose states for undo/redo availability and state manipulation.
- * Group Member: Member 1 — Editor Engine & File Management
- */
 package com.example.mobiletexteditor.editor
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.mobiletexteditor.editor.model.UndoRedoState
 
 /**
  * Dedicated system memory stack tracking granular edits during the active session.
- * Exposes reactive Compose state for canUndo and canRedo.
+ * Exposes observable Compose states for canUndo and canRedo.
  */
 class UndoRedoManager(private val maxStackSize: Int = 100) {
 
@@ -26,17 +21,25 @@ class UndoRedoManager(private val maxStackSize: Int = 100) {
     var canRedo by mutableStateOf(false)
         private set
 
-    private fun updateState() {
+    var undoCount by mutableIntStateOf(0)
+        private set
+
+    var redoCount by mutableIntStateOf(0)
+        private set
+
+    private fun updateStateFlags() {
         canUndo = undoStack.isNotEmpty()
         canRedo = redoStack.isNotEmpty()
+        undoCount = undoStack.size
+        redoCount = redoStack.size
     }
 
     /**
      * Pushes a new state to the undo history stack.
-     * Clears the redo stack when a new edit occurs.
+     * Clears the redo stack when a new user edit occurs.
      */
     fun pushState(state: UndoRedoState) {
-        if (undoStack.isNotEmpty() && undoStack.last() == state) {
+        if (undoStack.isNotEmpty() && undoStack.last().text == state.text) {
             return
         }
 
@@ -46,7 +49,7 @@ class UndoRedoManager(private val maxStackSize: Int = 100) {
 
         undoStack.addLast(state)
         redoStack.clear()
-        updateState()
+        updateStateFlags()
     }
 
     /**
@@ -60,7 +63,7 @@ class UndoRedoManager(private val maxStackSize: Int = 100) {
 
         val previousState = undoStack.removeLast()
         redoStack.addLast(currentState)
-        updateState()
+        updateStateFlags()
         return previousState
     }
 
@@ -75,7 +78,7 @@ class UndoRedoManager(private val maxStackSize: Int = 100) {
 
         val nextState = redoStack.removeLast()
         undoStack.addLast(currentState)
-        updateState()
+        updateStateFlags()
         return nextState
     }
 
@@ -85,9 +88,6 @@ class UndoRedoManager(private val maxStackSize: Int = 100) {
     fun clear() {
         undoStack.clear()
         redoStack.clear()
-        updateState()
+        updateStateFlags()
     }
-
-    val undoCount: Int get() = undoStack.size
-    val redoCount: Int get() = redoStack.size
 }

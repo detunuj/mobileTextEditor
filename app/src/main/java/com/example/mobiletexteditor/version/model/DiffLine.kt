@@ -1,9 +1,3 @@
-/**
- * File: DiffLine.kt
- * Purpose: Domain models for line-by-line diff comparison, representing additions, deletions,
- *          modifications, and overall diff summary statistics.
- * Group Member: Member 3 — Version Control & Database
- */
 package com.example.mobiletexteditor.version.model
 
 /**

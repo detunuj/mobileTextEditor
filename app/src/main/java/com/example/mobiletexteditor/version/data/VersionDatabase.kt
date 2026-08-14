@@ -1,9 +1,3 @@
-/**
- * File: VersionDatabase.kt
- * Purpose: Room Database configuration providing thread-safe singleton database access
- *          for the incremental version control persistence system.
- * Group Member: Member 3 — Version Control & Database
- */
 package com.example.mobiletexteditor.version.data
 
 import android.content.Context

@@ -1,9 +1,3 @@
-/**
- * File: CrashRecoveryDialog.kt
- * Purpose: Alert dialog displayed on launch when an unsaved crash recovery draft is detected,
- *          providing draft preview and options to restore or discard unsaved work.
- * Group Member: Member 2 — Syntax Highlighting & Recovery
- */
 package com.example.mobiletexteditor.highlighting.ui
 
 import androidx.compose.foundation.layout.Column

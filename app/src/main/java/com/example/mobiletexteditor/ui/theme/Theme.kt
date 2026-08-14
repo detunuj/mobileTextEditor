@@ -1,8 +1,3 @@
-/**
- * File: Theme.kt
- * Purpose: Material 3 theme configuration supporting dynamic color and light/dark color schemes.
- * Group Members: Member 1, Member 2, and Member 3
- */
 package com.example.mobiletexteditor.ui.theme
 
 import android.app.Activity

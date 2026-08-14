@@ -1,9 +1,3 @@
-/**
- * File: FileVersionDao.kt
- * Purpose: Room Data Access Object defining SQLite queries for inserting snapshots, retrieving
- *          version histories (ascending for reconstruction, descending for UI), and managing deletions.
- * Group Member: Member 3 — Version Control & Database
- */
 package com.example.mobiletexteditor.version.data
 
 import androidx.room.Dao

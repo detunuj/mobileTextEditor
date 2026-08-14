@@ -1,9 +1,3 @@
-/**
- * File: CreateSnapshotDialog.kt
- * Purpose: Jetpack Compose dialog allowing users to create explicit named/tagged snapshot checkpoints
- *          with custom commit notes in the incremental version control system.
- * Group Member: Member 3 — Version Control & Database
- */
 package com.example.mobiletexteditor.version.ui
 
 import androidx.compose.foundation.layout.Arrangement

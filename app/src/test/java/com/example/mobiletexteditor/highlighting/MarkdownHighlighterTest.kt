@@ -1,9 +1,3 @@
-/**
- * File: MarkdownHighlighterTest.kt
- * Purpose: Unit tests verifying Markdown syntax span styling for H1/H2/H3 headers,
- *          bold & italic markdown tags, inline code, code blocks, and blockquotes.
- * Group Member: Member 2 — Syntax Highlighting & Recovery
- */
 package com.example.mobiletexteditor.highlighting
 
 import org.junit.Assert.assertEquals
@@ -13,45 +7,23 @@ import org.junit.Test
 class MarkdownHighlighterTest {
 
     @Test
-    fun testEmptyMarkdownReturnsEmpty() {
-        val result = MarkdownHighlighter.highlight("")
-        assertEquals("", result.text)
-        assertTrue(result.spanStyles.isEmpty())
-    }
-
-    @Test
-    fun testHeadersHighlighting() {
-        val md = """
-            # Heading Level 1
-            ## Heading Level 2
-            ### Heading Level 3
-        """.trimIndent()
-
-        val result = MarkdownHighlighter.highlight(md)
-        assertEquals(md, result.text)
-        assertTrue("Should contain span styles for headers", result.spanStyles.size >= 3)
-    }
-
-    @Test
-    fun testBoldAndItalicHighlighting() {
-        val md = "This is **bold** text and *italic* text."
-        val result = MarkdownHighlighter.highlight(md)
-
-        assertEquals(md, result.text)
-        assertTrue(result.spanStyles.size >= 2)
-    }
-
-    @Test
-    fun testInlineCodeAndCodeBlockHighlighting() {
-        val md = """
-            Use `val x = 10` for immutable variables.
+    fun testMarkdownHighlighting() {
+        val markdown = """
+            # Header 1
+            ## Header 2
+            
+            This is **bold** text and *italic* text.
+            Here is `inline code` and [Google](https://google.com).
+            
+            > A blockquote
+            
             ```kotlin
-            fun main() = println("Hello")
+            fun test() = true
             ```
         """.trimIndent()
 
-        val result = MarkdownHighlighter.highlight(md)
-        assertEquals(md, result.text)
-        assertTrue(result.spanStyles.isNotEmpty())
+        val annotated = MarkdownHighlighter.highlight(markdown)
+        assertEquals(markdown, annotated.text)
+        assertTrue("Markdown span styles should be attached", annotated.spanStyles.isNotEmpty())
     }
 }

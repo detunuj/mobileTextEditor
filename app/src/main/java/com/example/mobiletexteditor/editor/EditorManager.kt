@@ -1,9 +1,3 @@
-/**
- * File: EditorManager.kt
- * Purpose: Central controller for editor buffer state, cursor, word-wrap toggles, read-only mode,
- *          font size adjustments, language syntax modes, undo/redo triggers, and search coordinator.
- * Group Member: Member 1 — Editor Engine & File Management
- */
 package com.example.mobiletexteditor.editor
 
 import android.content.Context
@@ -11,21 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import com.example.mobiletexteditor.editor.model.EditorFile
 import com.example.mobiletexteditor.editor.model.FileEncoding
 import com.example.mobiletexteditor.editor.model.SearchResult
 import com.example.mobiletexteditor.editor.model.UndoRedoState
 import java.io.File
-
-/**
- * Language syntax modes supported by the editor.
- */
-enum class EditorLanguage(val displayName: String) {
-    AUTO("Auto-Detect"),
-    KOTLIN("Kotlin"),
-    MARKDOWN("Markdown"),
-    PLAIN_TEXT("Plain Text")
-}
 
 /**
  * Central state controller for Member 1 (Editor Engine & File Management).
@@ -39,14 +25,14 @@ class EditorManager(
     var activeFile by mutableStateOf(fileManager.createNewFile())
         private set
 
-    var textContent by mutableStateOf("")
+    var textFieldValue by mutableStateOf(TextFieldValue(""))
         private set
+
+    val textContent: String get() = textFieldValue.text
 
     var isWordWrapEnabled by mutableStateOf(true)
     var isReadOnly by mutableStateOf(false)
     var fontSizeSp by mutableFloatStateOf(14f)
-
-    var languageOverride by mutableStateOf(EditorLanguage.AUTO)
 
     var searchResult by mutableStateOf(SearchResult())
         private set
@@ -55,36 +41,40 @@ class EditorManager(
     val canRedo: Boolean get() = undoRedoManager.canRedo
 
     /**
-     * Resolves whether Kotlin syntax highlighting should be active.
+     * Increases overall editor zoom (font size).
      */
-    val isKotlinLanguage: Boolean get() = when (languageOverride) {
-        EditorLanguage.KOTLIN -> true
-        EditorLanguage.MARKDOWN -> false
-        EditorLanguage.PLAIN_TEXT -> false
-        EditorLanguage.AUTO -> activeFile.isKotlin
+    fun zoomIn() {
+        if (fontSizeSp < 32f) {
+            fontSizeSp = (fontSizeSp + 2f).coerceAtMost(32f)
+        }
     }
 
     /**
-     * Resolves whether Markdown syntax highlighting should be active.
+     * Decreases overall editor zoom (font size).
      */
-    val isMarkdownLanguage: Boolean get() = when (languageOverride) {
-        EditorLanguage.MARKDOWN -> true
-        EditorLanguage.KOTLIN -> false
-        EditorLanguage.PLAIN_TEXT -> false
-        EditorLanguage.AUTO -> activeFile.isMarkdown
+    fun zoomOut() {
+        if (fontSizeSp > 10f) {
+            fontSizeSp = (fontSizeSp - 2f).coerceAtLeast(10f)
+        }
     }
 
     /**
      * Updates the editor text buffer and pushes state to undo stack.
      */
-    fun updateContent(newText: String, pushToUndo: Boolean = true) {
+    fun updateContent(newValue: TextFieldValue, pushToUndo: Boolean = true) {
         if (isReadOnly) return
 
-        if (pushToUndo && newText != textContent) {
-            undoRedoManager.pushState(UndoRedoState(text = textContent))
+        if (pushToUndo && newValue.text != textFieldValue.text) {
+            undoRedoManager.pushState(
+                UndoRedoState(
+                    text = textFieldValue.text,
+                    selectionStart = textFieldValue.selection.start,
+                    selectionEnd = textFieldValue.selection.end
+                )
+            )
         }
 
-        textContent = newText
+        textFieldValue = newValue
         if (!activeFile.isModified) {
             activeFile = activeFile.copy(isModified = true)
         }
@@ -92,7 +82,7 @@ class EditorManager(
         // Re-run active search query if any
         if (searchResult.query.isNotEmpty()) {
             searchResult = SearchManager.search(
-                text = newText,
+                text = newValue.text,
                 query = searchResult.query,
                 isCaseSensitive = searchResult.isCaseSensitive,
                 isMatchWholeWord = searchResult.isMatchWholeWord
@@ -100,66 +90,98 @@ class EditorManager(
         }
     }
 
+    fun updateContent(newText: String, pushToUndo: Boolean = true) {
+        updateContent(
+            TextFieldValue(
+                text = newText,
+                selection = TextRange(newText.length)
+            ),
+            pushToUndo = pushToUndo
+        )
+    }
+
     /**
-     * Directly sets editor content without marking as user modification (e.g., on open / rollback).
+     * Directly sets editor content without pushing to undo (e.g. on open or rollback).
      */
     fun setContentDirectly(newText: String, markModified: Boolean = false) {
-        textContent = newText
+        textFieldValue = TextFieldValue(text = newText, selection = TextRange(0))
         undoRedoManager.clear()
         activeFile = activeFile.copy(isModified = markModified)
     }
 
     fun undo() {
-        if (isReadOnly || !canUndo) return
-        val previousState = undoRedoManager.undo(UndoRedoState(text = textContent))
+        if (isReadOnly) return
+        val previousState = undoRedoManager.undo(
+            UndoRedoState(
+                text = textFieldValue.text,
+                selectionStart = textFieldValue.selection.start,
+                selectionEnd = textFieldValue.selection.end
+            )
+        )
         if (previousState != null) {
-            textContent = previousState.text
+            val safeStart = previousState.selectionStart.coerceIn(0, previousState.text.length)
+            val safeEnd = previousState.selectionEnd.coerceIn(safeStart, previousState.text.length)
+            textFieldValue = TextFieldValue(
+                text = previousState.text,
+                selection = TextRange(safeStart, safeEnd)
+            )
             activeFile = activeFile.copy(isModified = true)
+
+            // Re-run search matches on new text
             if (searchResult.query.isNotEmpty()) {
-                performSearch(searchResult.query, searchResult.isCaseSensitive, searchResult.isMatchWholeWord)
+                searchResult = SearchManager.search(
+                    text = previousState.text,
+                    query = searchResult.query,
+                    isCaseSensitive = searchResult.isCaseSensitive,
+                    isMatchWholeWord = searchResult.isMatchWholeWord
+                )
             }
         }
     }
 
     fun redo() {
-        if (isReadOnly || !canRedo) return
-        val nextState = undoRedoManager.redo(UndoRedoState(text = textContent))
+        if (isReadOnly) return
+        val nextState = undoRedoManager.redo(
+            UndoRedoState(
+                text = textFieldValue.text,
+                selectionStart = textFieldValue.selection.start,
+                selectionEnd = textFieldValue.selection.end
+            )
+        )
         if (nextState != null) {
-            textContent = nextState.text
+            val safeStart = nextState.selectionStart.coerceIn(0, nextState.text.length)
+            val safeEnd = nextState.selectionEnd.coerceIn(safeStart, nextState.text.length)
+            textFieldValue = TextFieldValue(
+                text = nextState.text,
+                selection = TextRange(safeStart, safeEnd)
+            )
             activeFile = activeFile.copy(isModified = true)
+
+            // Re-run search matches on new text
             if (searchResult.query.isNotEmpty()) {
-                performSearch(searchResult.query, searchResult.isCaseSensitive, searchResult.isMatchWholeWord)
+                searchResult = SearchManager.search(
+                    text = nextState.text,
+                    query = searchResult.query,
+                    isCaseSensitive = searchResult.isCaseSensitive,
+                    isMatchWholeWord = searchResult.isMatchWholeWord
+                )
             }
-        }
-    }
-
-    fun increaseFontSize() {
-        if (fontSizeSp < 32f) {
-            fontSizeSp += 2f
-        }
-    }
-
-    fun decreaseFontSize() {
-        if (fontSizeSp > 10f) {
-            fontSizeSp -= 2f
         }
     }
 
     fun newFile(name: String = "Untitled.kt") {
         activeFile = fileManager.createNewFile(name)
-        textContent = ""
+        textFieldValue = TextFieldValue("")
         undoRedoManager.clear()
         isReadOnly = false
-        languageOverride = EditorLanguage.AUTO
     }
 
     suspend fun openFile(file: File, encoding: FileEncoding = FileEncoding.UTF_8): Result<Unit> {
         val result = fileManager.openFile(file, encoding)
         return result.map { (openedFile, content) ->
             activeFile = openedFile
-            textContent = content
+            textFieldValue = TextFieldValue(content)
             isReadOnly = openedFile.isReadOnly
-            languageOverride = EditorLanguage.AUTO
             undoRedoManager.clear()
         }
     }
@@ -189,14 +211,26 @@ class EditorManager(
             isCaseSensitive = isCaseSensitive,
             isMatchWholeWord = isMatchWholeWord
         )
+        syncCursorWithActiveMatch()
     }
 
     fun findNext() {
         searchResult = SearchManager.findNext(searchResult)
+        syncCursorWithActiveMatch()
     }
 
     fun findPrevious() {
         searchResult = SearchManager.findPrevious(searchResult)
+        syncCursorWithActiveMatch()
+    }
+
+    private fun syncCursorWithActiveMatch() {
+        val match = searchResult.activeMatch
+        if (match != null && match.startIndex <= textContent.length && match.endIndex <= textContent.length) {
+            textFieldValue = textFieldValue.copy(
+                selection = TextRange(match.startIndex, match.endIndex)
+            )
+        }
     }
 
     fun replaceCurrent(replacement: String) {
@@ -204,6 +238,7 @@ class EditorManager(
         val (newText, updatedResult) = SearchManager.replaceCurrent(textContent, searchResult, replacement)
         updateContent(newText)
         searchResult = updatedResult
+        syncCursorWithActiveMatch()
     }
 
     fun replaceAll(replacement: String): Int {
@@ -217,6 +252,12 @@ class EditorManager(
         )
         if (count > 0) {
             updateContent(newText)
+            searchResult = SearchManager.search(
+                text = newText,
+                query = searchResult.query,
+                isCaseSensitive = searchResult.isCaseSensitive,
+                isMatchWholeWord = searchResult.isMatchWholeWord
+            )
         }
         return count
     }

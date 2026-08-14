@@ -1,8 +1,3 @@
-/**
- * File: Type.kt
- * Purpose: Typography styling definitions for the Material 3 text hierarchy.
- * Group Members: Member 1, Member 2, and Member 3
- */
 package com.example.mobiletexteditor.ui.theme
 
 import androidx.compose.material3.Typography

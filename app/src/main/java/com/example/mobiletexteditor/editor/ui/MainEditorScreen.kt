@@ -1,16 +1,7 @@
-/**
- * File: MainEditorScreen.kt
- * Purpose: Main application UI screen assembling all subsystems:
- *          - Member 1: Editor canvas, synchronized line numbers, undo/redo, font resizing, search bar, sidebar
- *          - Member 2: Kotlin/Markdown syntax highlighting, Markdown preview modal, 10s auto-backup recovery
- *          - Member 3: Incremental delta snapshotting, room history viewer, line-by-line diffs, rollback
- * Group Members: Member 1, Member 2, and Member 3
- */
 package com.example.mobiletexteditor.editor.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,16 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Redo
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.automirrored.filled.WrapText
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
@@ -39,10 +27,11 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.WrapText
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -64,19 +53,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.mobiletexteditor.editor.EditorLanguage
 import com.example.mobiletexteditor.editor.EditorManager
-import com.example.mobiletexteditor.editor.model.FileEncoding
 import com.example.mobiletexteditor.highlighting.CrashRecoveryManager
 import com.example.mobiletexteditor.highlighting.RecoveryDraft
 import com.example.mobiletexteditor.highlighting.SyntaxVisualTransformation
@@ -89,7 +80,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Main application screen integrating:
- * - Member 1: Editor Engine, Undo/Redo, Search/Replace, Word-wrap, Read-only lock, File Sidebar
+ * - Member 1: Editor Engine, Undo/Redo, Search/Replace, Word-wrap, Read-only lock, File Sidebar, Zooming
  * - Member 2: Kotlin/Markdown Syntax Highlighting, Live Markdown Preview, 10s Crash Auto-Backup
  * - Member 3: Incremental Delta Version Control, Room Persistence, Visual Diff Viewer, Rollback
  */
@@ -110,8 +101,10 @@ fun MainEditorScreen() {
     var showMarkdownPreview by remember { mutableStateOf(false) }
     var showSnapshotDialog by remember { mutableStateOf(false) }
     var showHistoryDialog by remember { mutableStateOf(false) }
-    var showLanguageMenu by remember { mutableStateOf(false) }
     var pendingRecoveryDraft by remember { mutableStateOf<RecoveryDraft?>(null) }
+
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val textMeasurer = rememberTextMeasurer()
 
     // Start 10-second background auto-backup loop & check for crash draft on init
     LaunchedEffect(Unit) {
@@ -203,7 +196,7 @@ fun MainEditorScreen() {
                     TopAppBar(
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                val fileIcon = if (editorManager.isKotlinLanguage) Icons.Default.Code else Icons.Default.Description
+                                val fileIcon = if (editorManager.activeFile.isKotlin) Icons.Default.Code else Icons.Default.Description
                                 Icon(
                                     imageVector = fileIcon,
                                     contentDescription = null,
@@ -230,26 +223,20 @@ fun MainEditorScreen() {
                             }
                         },
                         actions = {
-                            // Member 1: Undo / Redo
+                            // Member 1: Undo
                             IconButton(
                                 onClick = { editorManager.undo() },
                                 enabled = editorManager.canUndo && !editorManager.isReadOnly
                             ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Undo,
-                                    contentDescription = "Undo",
-                                    tint = if (editorManager.canUndo && !editorManager.isReadOnly) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                )
+                                Icon(Icons.Default.Undo, contentDescription = "Undo")
                             }
+
+                            // Member 1: Redo (Corrected reactivity)
                             IconButton(
                                 onClick = { editorManager.redo() },
                                 enabled = editorManager.canRedo && !editorManager.isReadOnly
                             ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Redo,
-                                    contentDescription = "Redo",
-                                    tint = if (editorManager.canRedo && !editorManager.isReadOnly) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                )
+                                Icon(Icons.Default.Redo, contentDescription = "Redo")
                             }
 
                             // Member 1: Search & Replace
@@ -258,7 +245,7 @@ fun MainEditorScreen() {
                             }
 
                             // Member 2: Markdown Preview Panel (if markdown)
-                            if (editorManager.isMarkdownLanguage) {
+                            if (editorManager.activeFile.isMarkdown) {
                                 IconButton(onClick = { showMarkdownPreview = true }) {
                                     Icon(Icons.Default.Visibility, contentDescription = "Markdown Preview")
                                 }
@@ -279,7 +266,7 @@ fun MainEditorScreen() {
                         )
                     )
 
-                    // Secondary Quick Toolbar: Word wrap, Read-only, Font size controls
+                    // Secondary Quick Toolbar: Word wrap, Read-only, File Zooming
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -296,7 +283,7 @@ fun MainEditorScreen() {
                                 // Word wrap toggle
                                 IconButton(onClick = { editorManager.isWordWrapEnabled = !editorManager.isWordWrapEnabled }) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.WrapText,
+                                        imageVector = Icons.Default.WrapText,
                                         contentDescription = "Toggle Word Wrap",
                                         tint = if (editorManager.isWordWrapEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                                     )
@@ -312,48 +299,39 @@ fun MainEditorScreen() {
                                 }
                             }
 
-                            // Font size controls (A- and A+ buttons)
+                            // File Content Zooming (A- / A+)
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Surface(
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .clickable { editorManager.decreaseFontSize() },
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    shape = CircleShape
+                                IconButton(
+                                    onClick = { editorManager.zoomOut() },
+                                    modifier = Modifier.size(32.dp)
                                 ) {
                                     Text(
                                         text = "A-",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
 
                                 Text(
                                     text = "${editorManager.fontSizeSp.toInt()} sp",
                                     fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
 
-                                Surface(
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .clickable { editorManager.increaseFontSize() },
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    shape = CircleShape
+                                IconButton(
+                                    onClick = { editorManager.zoomIn() },
+                                    modifier = Modifier.size(32.dp)
                                 ) {
                                     Text(
                                         text = "A+",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
@@ -378,58 +356,63 @@ fun MainEditorScreen() {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                // Editor Main Canvas: Synchronized Line Numbers + Syntax Highlighted BasicTextField
-                val lineCount = remember(editorManager.textContent) {
-                    editorManager.textContent.lines().size.coerceAtLeast(1)
-                }
-
                 val verticalScroll = rememberScrollState()
                 val horizontalScroll = rememberScrollState()
+                val gutterColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
 
-                val currentFontSize = editorManager.fontSizeSp.sp
-                val currentLineHeight = (editorManager.fontSizeSp * 1.5f).sp
-
-                val editorTextStyle = TextStyle(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = currentFontSize,
-                    lineHeight = currentLineHeight,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
+                // Main Editor Area (Gutter + Text Field)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .background(MaterialTheme.colorScheme.surface)
+                        .verticalScroll(verticalScroll)
                 ) {
-                    // Synchronized Line Numbers Gutter
-                    Column(
-                        modifier = Modifier
-                            .width(46.dp)
-                            .fillMaxHeight()
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            .verticalScroll(verticalScroll)
-                            .padding(vertical = 12.dp, horizontal = 4.dp)
-                    ) {
-                        for (i in 1..lineCount) {
-                            Text(
-                                text = "$i",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = currentFontSize,
-                                lineHeight = currentLineHeight,
-                                color = MaterialTheme.colorScheme.outline,
-                                textAlign = TextAlign.End,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-
-                    // Synchronized Real-Time Syntax Highlighted Buffer
+                    // Line Number Gutter (Accurately aligned with logical lines & word wrap)
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .width(44.dp)
                             .fillMaxHeight()
-                            .verticalScroll(verticalScroll)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                            .padding(vertical = 12.dp)
+                            .drawBehind {
+                                val layout = textLayoutResult ?: return@drawBehind
+                                val text = editorManager.textContent
+                                var currentLogicalLine = 1
+
+                                for (visualLine in 0 until layout.lineCount) {
+                                    val startOffset = layout.getLineStart(visualLine)
+                                    val isLogicalStart = (visualLine == 0) || (startOffset > 0 && startOffset <= text.length && text[startOffset - 1] == '\n')
+
+                                    if (isLogicalStart) {
+                                        val lineStr = currentLogicalLine.toString()
+                                        currentLogicalLine++
+
+                                        val measured = textMeasurer.measure(
+                                            text = lineStr,
+                                            style = TextStyle(
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = editorManager.fontSizeSp.sp,
+                                                color = gutterColor,
+                                                textAlign = TextAlign.End
+                                            )
+                                        )
+
+                                        val topY = layout.getLineTop(visualLine)
+                                        val x = size.width - measured.size.width - 6.dp.toPx()
+                                        drawText(
+                                            textLayoutResult = measured,
+                                            topLeft = Offset(x, topY)
+                                        )
+                                    }
+                                }
+                            }
+                    )
+
+                    // Text Editor Canvas with dynamic VisualTransformation for syntax & search highlights
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 10.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)
                             .then(
                                 if (!editorManager.isWordWrapEnabled) {
                                     Modifier.horizontalScroll(horizontalScroll)
@@ -437,29 +420,28 @@ fun MainEditorScreen() {
                                     Modifier
                                 }
                             )
-                            .padding(horizontal = 10.dp, vertical = 12.dp)
                     ) {
                         BasicTextField(
-                            value = editorManager.textContent,
+                            value = editorManager.textFieldValue,
                             onValueChange = { editorManager.updateContent(it) },
-                            modifier = Modifier.fillMaxWidth(),
+                            onTextLayout = { textLayoutResult = it },
                             readOnly = editorManager.isReadOnly,
-                            textStyle = editorTextStyle,
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            visualTransformation = SyntaxVisualTransformation(
-                                isKotlin = editorManager.isKotlinLanguage,
-                                isMarkdown = editorManager.isMarkdownLanguage,
-                                searchResult = editorManager.searchResult
+                            textStyle = TextStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = editorManager.fontSizeSp.sp,
+                                lineHeight = (editorManager.fontSizeSp * 1.45f).sp,
+                                color = MaterialTheme.colorScheme.onSurface
                             ),
-                            decorationBox = { innerTextField ->
-                                if (editorManager.textContent.isEmpty()) {
-                                    Text(
-                                        text = "Start typing code...",
-                                        style = editorTextStyle.copy(color = MaterialTheme.colorScheme.outline)
-                                    )
-                                }
-                                innerTextField()
-                            }
+                            visualTransformation = SyntaxVisualTransformation(
+                                isKotlin = editorManager.activeFile.isKotlin,
+                                isMarkdown = editorManager.activeFile.isMarkdown,
+                                searchQuery = editorManager.searchResult.query,
+                                activeMatchIndex = editorManager.searchResult.currentMatchIndex,
+                                isCaseSensitive = editorManager.searchResult.isCaseSensitive,
+                                isMatchWholeWord = editorManager.searchResult.isMatchWholeWord
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -477,50 +459,21 @@ fun MainEditorScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val logicalLines = editorManager.textContent.lines().size
+                        val charCount = editorManager.textContent.length
+
                         Text(
-                            text = "Lines: ${editorManager.textContent.lines().size} | Chars: ${editorManager.textContent.length}",
+                            text = "Lines: $logicalLines | Chars: $charCount | Zoom: ${editorManager.fontSizeSp.toInt()}sp",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        // Language Mode Selector Chip (Click to switch between Kotlin, Markdown, Plain Text)
-                        Box {
-                            val activeLangName = when {
-                                editorManager.isKotlinLanguage -> "Kotlin"
-                                editorManager.isMarkdownLanguage -> "Markdown"
-                                else -> "Plain Text"
-                            }
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .clickable { showLanguageMenu = true }
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "$activeLangName ▾",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            DropdownMenu(
-                                expanded = showLanguageMenu,
-                                onDismissRequest = { showLanguageMenu = false }
-                            ) {
-                                EditorLanguage.entries.forEach { lang ->
-                                    DropdownMenuItem(
-                                        text = { Text(lang.displayName) },
-                                        onClick = {
-                                            editorManager.languageOverride = lang
-                                            showLanguageMenu = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                        Text(
+                            text = if (editorManager.activeFile.isKotlin) "Kotlin" else if (editorManager.activeFile.isMarkdown) "Markdown" else "Plain Text",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }

@@ -1,9 +1,3 @@
-/**
- * File: DeltaManager.kt
- * Purpose: Computes incremental text delta patches using java-diff-utils and sequentially reconstructs
- *          historical file content across multiple snapshot versions without full file duplication.
- * Group Member: Member 3 — Version Control & Database
- */
 package com.example.mobiletexteditor.version
 
 import com.example.mobiletexteditor.version.data.FileVersionEntity

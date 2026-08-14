@@ -1,9 +1,3 @@
-/**
- * File: DiffManager.kt
- * Purpose: Compares two text versions line-by-line and generates classified DiffLine models
- *          (ADDED, DELETED, MODIFIED, UNCHANGED) with line numbers and change statistics for the UI.
- * Group Member: Member 3 — Version Control & Database
- */
 package com.example.mobiletexteditor.version
 
 import com.example.mobiletexteditor.version.model.DiffLine

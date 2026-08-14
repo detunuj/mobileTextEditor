@@ -1,9 +1,3 @@
-/**
- * File: MarkdownPreviewPanel.kt
- * Purpose: Fullscreen modal dialog parsing and rendering rich Markdown elements into styled Compose
- *          components (headers, bold/italics, code blocks, blockquotes, lists, horizontal rules).
- * Group Member: Member 2 — Syntax Highlighting & Recovery
- */
 package com.example.mobiletexteditor.highlighting.ui
 
 import androidx.compose.foundation.background

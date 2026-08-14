@@ -1,9 +1,3 @@
-/**
- * File: CrashRecoveryManager.kt
- * Purpose: Automated crash prevention and recovery manager. Periodically backs up active editor buffers
- *          every 10 seconds and detects unsaved crash drafts upon app restart.
- * Group Member: Member 2 — Syntax Highlighting & Recovery
- */
 package com.example.mobiletexteditor.highlighting
 
 import android.content.Context

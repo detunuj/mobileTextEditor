@@ -1,9 +1,3 @@
-/**
- * File: FileSidebarDrawer.kt
- * Purpose: Navigation drawer providing quick file lifecycle actions (New, Save, Save As)
- *          and listing saved internal documents and recently opened files with timestamps and sizes.
- * Group Member: Member 1 — Editor Engine & File Management
- */
 package com.example.mobiletexteditor.editor.ui
 
 import androidx.compose.foundation.clickable
@@ -18,16 +12,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.SaveAs
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.NavigationDrawerItem
@@ -35,15 +34,11 @@ import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mobiletexteditor.editor.FileManager
@@ -53,7 +48,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * File Sidebar Drawer for New, Save, Save As, and Recent Files management.
+ * Slide-out sidebar drawer for managing recent files, local storage, and editor actions.
  */
 @Composable
 fun FileSidebarDrawer(
@@ -65,17 +60,12 @@ fun FileSidebarDrawer(
     onOpenFile: (File) -> Unit,
     onCloseDrawer: () -> Unit
 ) {
-    var savedFiles by remember { mutableStateOf<List<File>>(emptyList()) }
-    var recentFiles by remember { mutableStateOf<List<File>>(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        savedFiles = fileManager.listSavedFiles()
-        recentFiles = fileManager.getRecentFiles()
-    }
+    val localFiles = remember(activeFilePath) { fileManager.listLocalFiles() }
+    val recentPaths = remember(activeFilePath) { fileManager.getRecentFiles() }
+    val dateFormat = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
 
     ModalDrawerSheet(
-        modifier = Modifier.width(300.dp),
-        drawerContainerColor = MaterialTheme.colorScheme.surface
+        modifier = Modifier.width(310.dp)
     ) {
         Column(
             modifier = Modifier
@@ -84,139 +74,167 @@ fun FileSidebarDrawer(
         ) {
             // App Title Header
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 16.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Description,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(end = 10.dp)
+                    tint = MaterialTheme.colorScheme.primary
                 )
-                Column {
-                    Text(
-                        text = "Mobile Text Editor",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "v1.0 · Multi-Member Project",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Text(
+                    text = "Text Editor",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilledTonalButton(
+                    onClick = {
+                        onNewFile()
+                        onCloseDrawer()
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("New")
+                }
+
+                FilledTonalButton(
+                    onClick = {
+                        onSaveFile()
+                        onCloseDrawer()
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Save, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Save")
                 }
             }
 
-            Divider()
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Action Items: New, Save, Save As
-            Text(
-                text = "File Operations",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-
-            SidebarActionButton(
-                icon = Icons.Default.Add,
-                label = "New File",
-                onClick = {
-                    onNewFile()
-                    onCloseDrawer()
-                }
-            )
-
-            SidebarActionButton(
-                icon = Icons.Default.Save,
-                label = "Save",
-                onClick = {
-                    onSaveFile()
-                    onCloseDrawer()
-                }
-            )
-
-            SidebarActionButton(
-                icon = Icons.Default.SaveAs,
-                label = "Save As (Encoding)...",
+            NavigationDrawerItem(
+                label = { Text("Save As...") },
+                icon = { Icon(Icons.Default.SaveAs, contentDescription = null) },
+                selected = false,
                 onClick = {
                     onSaveAsFile()
                     onCloseDrawer()
-                }
+                },
+                shape = RoundedCornerShape(8.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Divider()
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Recent & Saved Files Section
-            Text(
-                text = "Saved Documents",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-
-            if (savedFiles.isEmpty()) {
-                Text(
-                    text = "No saved files in internal storage",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            } else {
-                val dateFormat = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
-
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                ) {
-                    items(savedFiles) { file ->
-                        val isSelected = file.absolutePath == activeFilePath
-                        val isKotlin = file.name.endsWith(".kt") || file.name.endsWith(".kts")
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp)
-                                .clickable {
-                                    onOpenFile(file)
-                                    onCloseDrawer()
-                                },
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                            shape = MaterialTheme.shapes.small
+            // Local Files & Recent Files List
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Section: Recent Files
+                if (recentPaths.isNotEmpty()) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(vertical = 4.dp)
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (isKotlin) Icons.Default.Code else Icons.Default.Description,
-                                    contentDescription = null,
-                                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(end = 8.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = file.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "${dateFormat.format(Date(file.lastModified()))} · ${file.length()} B",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.outline,
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
+                            Icon(
+                                Icons.Default.History,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.height(18.dp)
+                            )
+                            Text(
+                                text = "Recent Files",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
+                    }
+
+                    items(recentPaths) { path ->
+                        val file = File(path)
+                        val isSelected = path == activeFilePath
+                        FileItemRow(
+                            file = file,
+                            isSelected = isSelected,
+                            dateFormat = dateFormat,
+                            onClick = {
+                                onOpenFile(file)
+                                onCloseDrawer()
+                            }
+                        )
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+
+                // Section: Local App Documents
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Folder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.height(18.dp)
+                        )
+                        Text(
+                            text = "Documents Folder",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+
+                if (localFiles.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No saved files found in documents",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    items(localFiles) { file ->
+                        val isSelected = file.absolutePath == activeFilePath
+                        FileItemRow(
+                            file = file,
+                            isSelected = isSelected,
+                            dateFormat = dateFormat,
+                            onClick = {
+                                onOpenFile(file)
+                                onCloseDrawer()
+                            }
+                        )
                     }
                 }
             }
@@ -225,19 +243,58 @@ fun FileSidebarDrawer(
 }
 
 @Composable
-private fun SidebarActionButton(
-    icon: ImageVector,
-    label: String,
+private fun FileItemRow(
+    file: File,
+    isSelected: Boolean,
+    dateFormat: SimpleDateFormat,
     onClick: () -> Unit
 ) {
-    NavigationDrawerItem(
-        icon = { Icon(icon, contentDescription = null) },
-        label = { Text(label) },
-        selected = false,
-        onClick = onClick,
-        modifier = Modifier.padding(vertical = 2.dp),
-        colors = NavigationDrawerItemDefaults.colors(
-            unselectedContainerColor = MaterialTheme.colorScheme.surface
-        )
-    )
+    val isKotlin = file.name.endsWith(".kt") || file.name.endsWith(".kts")
+    val isMarkdown = file.name.endsWith(".md") || file.name.endsWith(".markdown")
+
+    val fileIcon = if (isKotlin) Icons.Default.Code else Icons.Default.Description
+    val containerColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        color = containerColor
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = fileIcon,
+                contentDescription = null,
+                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.height(20.dp)
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = file.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${dateFormat.format(Date(file.lastModified()))} · ${file.length()} B",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
+    }
 }
