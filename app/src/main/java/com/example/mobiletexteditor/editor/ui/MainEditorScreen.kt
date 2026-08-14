@@ -80,7 +80,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Main application screen integrating:
- * - Member 1: Editor Engine, Undo/Redo, Search/Replace, Word-wrap, Read-only lock, File Sidebar, Zooming
+ * - Member 1: Editor Engine, Reactive Undo/Redo, Word-Wrap & Logical Line Number Gutter, Content Zooming, Search/Replace
  * - Member 2: Kotlin/Markdown Syntax Highlighting, Live Markdown Preview, 10s Crash Auto-Backup
  * - Member 3: Incremental Delta Version Control, Room Persistence, Visual Diff Viewer, Rollback
  */
@@ -103,8 +103,25 @@ fun MainEditorScreen() {
     var showHistoryDialog by remember { mutableStateOf(false) }
     var pendingRecoveryDraft by remember { mutableStateOf<RecoveryDraft?>(null) }
 
+    val verticalScrollState = rememberScrollState()
+    val horizontalScrollState = rememberScrollState()
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     val textMeasurer = rememberTextMeasurer()
+
+    // Auto-scroll editor to active search match when match changes
+    LaunchedEffect(editorManager.searchResult.currentMatchIndex) {
+        val match = editorManager.searchResult.activeMatch
+        val layout = textLayoutResult
+        if (match != null && layout != null && match.startIndex in 0..editorManager.textContent.length) {
+            try {
+                val visualLine = layout.getLineForOffset(match.startIndex)
+                val targetTopY = layout.getLineTop(visualLine).toInt()
+                verticalScrollState.animateScrollTo(targetTopY)
+            } catch (e: Exception) {
+                // Ignore any layout race conditions
+            }
+        }
+    }
 
     // Start 10-second background auto-backup loop & check for crash draft on init
     LaunchedEffect(Unit) {
@@ -223,7 +240,7 @@ fun MainEditorScreen() {
                             }
                         },
                         actions = {
-                            // Member 1: Undo
+                            // Member 1: Undo Action
                             IconButton(
                                 onClick = { editorManager.undo() },
                                 enabled = editorManager.canUndo && !editorManager.isReadOnly
@@ -231,7 +248,7 @@ fun MainEditorScreen() {
                                 Icon(Icons.Default.Undo, contentDescription = "Undo")
                             }
 
-                            // Member 1: Redo (Corrected reactivity)
+                            // Member 1: Redo Action (Corrected reactivity)
                             IconButton(
                                 onClick = { editorManager.redo() },
                                 enabled = editorManager.canRedo && !editorManager.isReadOnly
@@ -239,19 +256,19 @@ fun MainEditorScreen() {
                                 Icon(Icons.Default.Redo, contentDescription = "Redo")
                             }
 
-                            // Member 1: Search & Replace
+                            // Member 1: Search & Replace Toggle
                             IconButton(onClick = { showSearchReplaceBar = !showSearchReplaceBar }) {
                                 Icon(Icons.Default.Search, contentDescription = "Search & Replace")
                             }
 
-                            // Member 2: Markdown Preview Panel (if markdown)
+                            // Member 2: Markdown Preview Panel (if active file is markdown)
                             if (editorManager.activeFile.isMarkdown) {
                                 IconButton(onClick = { showMarkdownPreview = true }) {
                                     Icon(Icons.Default.Visibility, contentDescription = "Markdown Preview")
                                 }
                             }
 
-                            // Member 3: Snapshot
+                            // Member 3: Create Snapshot
                             IconButton(onClick = { showSnapshotDialog = true }) {
                                 Icon(Icons.Default.BookmarkAdd, contentDescription = "Create Snapshot")
                             }
@@ -266,7 +283,7 @@ fun MainEditorScreen() {
                         )
                     )
 
-                    // Secondary Quick Toolbar: Word wrap, Read-only, File Zooming
+                    // Secondary Quick Toolbar: Word wrap toggle, Read-only lock, File Content Zoom (A- / A+)
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -280,7 +297,7 @@ fun MainEditorScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Word wrap toggle
+                                // Word wrap toggle (Switches between visual line wrapping and horizontal scrolling)
                                 IconButton(onClick = { editorManager.isWordWrapEnabled = !editorManager.isWordWrapEnabled }) {
                                     Icon(
                                         imageVector = Icons.Default.WrapText,
@@ -289,7 +306,7 @@ fun MainEditorScreen() {
                                     )
                                 }
 
-                                // Read-only toggle
+                                // Read-only toggle (Locks document against accidental editing)
                                 IconButton(onClick = { editorManager.isReadOnly = !editorManager.isReadOnly }) {
                                     Icon(
                                         imageVector = if (editorManager.isReadOnly) Icons.Default.Lock else Icons.Default.LockOpen,
@@ -299,7 +316,7 @@ fun MainEditorScreen() {
                                 }
                             }
 
-                            // File Content Zooming (A- / A+)
+                            // Content Zooming (A- / A+ buttons zoom the entire document including line numbers)
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -356,31 +373,37 @@ fun MainEditorScreen() {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                val verticalScroll = rememberScrollState()
-                val horizontalScroll = rememberScrollState()
                 val gutterColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                val topPaddingPx = 12.dp
 
-                // Main Editor Area (Gutter + Text Field)
+                // Main Editor Area (Gutter + Text Field scrolling synchronized)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .verticalScroll(verticalScroll)
+                        .verticalScroll(verticalScrollState)
                 ) {
-                    // Line Number Gutter (Accurately aligned with logical lines & word wrap)
+                    /*
+                     * Line Number Gutter:
+                     * 1. Word wrapping rule: Long lines wrap to visual rows without creating new line numbers.
+                     *    Wrapped continuation rows receive NO line number.
+                     * 2. Logical line rule: Line numbers appear ONLY at the start of a logical line (initial line or after '\n').
+                     * 3. Enter key rule: Pressing Enter inserts '\n', producing a new logical line and number aligned with its top.
+                     */
                     Box(
                         modifier = Modifier
                             .width(44.dp)
                             .fillMaxHeight()
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                            .padding(vertical = 12.dp)
                             .drawBehind {
                                 val layout = textLayoutResult ?: return@drawBehind
                                 val text = editorManager.textContent
                                 var currentLogicalLine = 1
+                                val topOffset = topPaddingPx.toPx()
 
                                 for (visualLine in 0 until layout.lineCount) {
                                     val startOffset = layout.getLineStart(visualLine)
+                                    // True if this visual row is the beginning of a logical line
                                     val isLogicalStart = (visualLine == 0) || (startOffset > 0 && startOffset <= text.length && text[startOffset - 1] == '\n')
 
                                     if (isLogicalStart) {
@@ -397,7 +420,8 @@ fun MainEditorScreen() {
                                             )
                                         )
 
-                                        val topY = layout.getLineTop(visualLine)
+                                        // Position line number directly aligned with the top of this visual line
+                                        val topY = layout.getLineTop(visualLine) + topOffset
                                         val x = size.width - measured.size.width - 6.dp.toPx()
                                         drawText(
                                             textLayoutResult = measured,
@@ -408,14 +432,14 @@ fun MainEditorScreen() {
                             }
                     )
 
-                    // Text Editor Canvas with dynamic VisualTransformation for syntax & search highlights
+                    // Text Editor Canvas with dynamic VisualTransformation for syntax & Find/Replace highlights
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(start = 10.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)
+                            .padding(start = 10.dp, end = 12.dp, top = topPaddingPx, bottom = 12.dp)
                             .then(
                                 if (!editorManager.isWordWrapEnabled) {
-                                    Modifier.horizontalScroll(horizontalScroll)
+                                    Modifier.horizontalScroll(horizontalScrollState)
                                 } else {
                                     Modifier
                                 }
