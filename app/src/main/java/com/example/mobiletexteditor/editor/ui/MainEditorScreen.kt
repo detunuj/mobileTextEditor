@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -120,6 +121,32 @@ fun MainEditorScreen() {
             } catch (e: Exception) {
                 // Ignore any layout race conditions
             }
+        }
+    }
+
+    // Auto-scroll to keep typing cursor and active text line visible above the keyboard
+    LaunchedEffect(editorManager.textFieldValue.selection, editorManager.textFieldValue.text, textLayoutResult) {
+        val layout = textLayoutResult ?: return@LaunchedEffect
+        val cursorOffset = editorManager.textFieldValue.selection.end.coerceIn(0, editorManager.textContent.length)
+        try {
+            val visualLine = layout.getLineForOffset(cursorOffset)
+            val cursorTopY = layout.getLineTop(visualLine)
+            val cursorBottomY = layout.getLineBottom(visualLine)
+
+            val viewportHeight = verticalScrollState.viewportSize
+            val scrollY = verticalScrollState.value
+
+            if (viewportHeight > 0) {
+                // If cursor is below the visible viewport (e.g. keyboard is up or typed at bottom)
+                if (cursorBottomY + 40 > scrollY + viewportHeight) {
+                    verticalScrollState.animateScrollTo((cursorBottomY - viewportHeight + 80).toInt().coerceAtLeast(0))
+                } else if (cursorTopY < scrollY) {
+                    // If cursor is above the visible viewport
+                    verticalScrollState.animateScrollTo(cursorTopY.toInt().coerceAtLeast(0))
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore any layout race conditions during rapid typing
         }
     }
 
@@ -372,6 +399,7 @@ fun MainEditorScreen() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .imePadding()
             ) {
                 val gutterColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
                 val topPaddingPx = 12.dp
