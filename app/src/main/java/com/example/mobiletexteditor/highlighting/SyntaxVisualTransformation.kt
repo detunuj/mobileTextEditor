@@ -1,3 +1,9 @@
+/**
+ * File: SyntaxVisualTransformation.kt
+ * Purpose: Compose VisualTransformation that overlays real-time syntax highlighting (Kotlin/Markdown)
+ *          and in-editor search match highlighting without altering underlying text state.
+ * Group Member: Member 2 — Syntax Highlighting & Recovery
+ */
 package com.example.mobiletexteditor.highlighting
 
 import androidx.compose.ui.graphics.Color

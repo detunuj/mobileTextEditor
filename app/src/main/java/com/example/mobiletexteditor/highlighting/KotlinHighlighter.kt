@@ -1,3 +1,9 @@
+/**
+ * File: KotlinHighlighter.kt
+ * Purpose: Tokenizes Kotlin source code and applies dynamic syntax styling to keywords, types,
+ *          strings, comments, annotations, and numbers using AnnotatedString and SpanStyles.
+ * Group Member: Member 2 — Syntax Highlighting & Recovery
+ */
 package com.example.mobiletexteditor.highlighting
 
 import androidx.compose.ui.graphics.Color

@@ -1,3 +1,9 @@
+/**
+ * File: DiffViewerDialog.kt
+ * Purpose: Fullscreen modal dialog displaying color-coded line-by-line differences between file
+ *          versions (green for additions, red for deletions) with line gutters, statistics, and direct rollback.
+ * Group Member: Member 3 — Version Control & Database
+ */
 package com.example.mobiletexteditor.version.ui
 
 import androidx.compose.foundation.background

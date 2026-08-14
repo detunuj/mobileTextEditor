@@ -1,26 +1,21 @@
+/**
+ * File: SearchResult.kt
+ * Purpose: Domain models for search matches, character index boundaries, and match query result state.
+ * Group Member: Member 1 — Editor Engine & File Management
+ */
 package com.example.mobiletexteditor.editor.model
 
 /**
- * Snapshot of text and cursor selection in the undo/redo stack.
- */
-data class UndoRedoState(
-    val text: String,
-    val selectionStart: Int = 0,
-    val selectionEnd: Int = 0
-)
-
-/**
- * Represents a single search match in the editor text.
+ * A single match occurrence within the text.
  */
 data class SearchMatch(
     val startIndex: Int,
     val endIndex: Int,
-    val lineNumber: Int,
-    val lineText: String
+    val matchedText: String
 )
 
 /**
- * Result container for active search query state.
+ * Complete state of an active text search operation.
  */
 data class SearchResult(
     val query: String = "",
@@ -29,8 +24,7 @@ data class SearchResult(
     val isCaseSensitive: Boolean = false,
     val isMatchWholeWord: Boolean = false
 ) {
-    val hasMatches: Boolean get() = matches.isNotEmpty()
     val totalMatches: Int get() = matches.size
-    val currentMatchNumber: Int get() = if (currentMatchIndex in matches.indices) currentMatchIndex + 1 else 0
+    val hasMatches: Boolean get() = matches.isNotEmpty()
     val activeMatch: SearchMatch? get() = if (currentMatchIndex in matches.indices) matches[currentMatchIndex] else null
 }

@@ -1,3 +1,9 @@
+/**
+ * File: MainActivity.kt
+ * Purpose: Single-activity entry point for the application. Initializes edge-to-edge UI
+ *          and launches the MainEditorScreen within the application theme.
+ * Group Members: Member 1, Member 2, and Member 3
+ */
 package com.example.mobiletexteditor
 
 import android.os.Bundle

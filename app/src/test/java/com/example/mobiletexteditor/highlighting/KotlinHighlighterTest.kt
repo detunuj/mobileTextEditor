@@ -1,3 +1,9 @@
+/**
+ * File: KotlinHighlighterTest.kt
+ * Purpose: Unit tests verifying correct tokenizer span generation for Kotlin keywords, types,
+ *          string literals, single & multi-line comments, and annotations.
+ * Group Member: Member 2 — Syntax Highlighting & Recovery
+ */
 package com.example.mobiletexteditor.highlighting
 
 import org.junit.Assert.assertEquals
@@ -7,28 +13,42 @@ import org.junit.Test
 class KotlinHighlighterTest {
 
     @Test
-    fun testKeywordsPresent() {
-        assertTrue(KotlinHighlighter.KEYWORDS.contains("fun"))
-        assertTrue(KotlinHighlighter.KEYWORDS.contains("val"))
-        assertTrue(KotlinHighlighter.KEYWORDS.contains("class"))
-        assertTrue(KotlinHighlighter.KEYWORDS.contains("override"))
-        assertTrue(KotlinHighlighter.KEYWORDS.contains("suspend"))
+    fun testEmptyStringProducesEmptyAnnotatedString() {
+        val result = KotlinHighlighter.highlight("")
+        assertEquals("", result.text)
+        assertTrue(result.spanStyles.isEmpty())
     }
 
     @Test
-    fun testHighlightNonEmpty() {
+    fun testKeywordAndTypeHighlighting() {
+        val code = "class UserService(val id: Int, var name: String)"
+        val result = KotlinHighlighter.highlight(code)
+
+        assertEquals(code, result.text)
+        assertTrue("Should have span styles applied for keywords and types", result.spanStyles.isNotEmpty())
+    }
+
+    @Test
+    fun testAnnotationAndCommentHighlighting() {
         val code = """
-            package com.example
-            
-            // This is a comment
-            fun main() {
-                val greeting = "Hello"
-                println(greeting)
+            @Composable
+            fun MainScreen() {
+                // This is a line comment
+                /* Block comment */
             }
         """.trimIndent()
 
-        val annotated = KotlinHighlighter.highlight(code)
-        assertEquals(code, annotated.text)
-        assertTrue("Span styles should be attached for syntax elements", annotated.spanStyles.isNotEmpty())
+        val result = KotlinHighlighter.highlight(code)
+        assertEquals(code, result.text)
+        assertTrue(result.spanStyles.size >= 3)
+    }
+
+    @Test
+    fun testStringLiteralHighlighting() {
+        val code = "val greeting = \"Hello, Mobile Editor!\""
+        val result = KotlinHighlighter.highlight(code)
+
+        assertEquals(code, result.text)
+        assertTrue(result.spanStyles.isNotEmpty())
     }
 }

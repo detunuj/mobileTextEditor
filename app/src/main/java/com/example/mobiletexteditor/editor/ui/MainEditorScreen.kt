@@ -1,3 +1,11 @@
+/**
+ * File: MainEditorScreen.kt
+ * Purpose: Main application UI screen assembling all subsystems:
+ *          - Member 1: Editor canvas, synchronized line numbers, undo/redo, font resizing, search bar, sidebar
+ *          - Member 2: Kotlin/Markdown syntax highlighting, Markdown preview modal, 10s auto-backup recovery
+ *          - Member 3: Incremental delta snapshotting, room history viewer, line-by-line diffs, rollback
+ * Group Members: Member 1, Member 2, and Member 3
+ */
 package com.example.mobiletexteditor.editor.ui
 
 import android.widget.Toast

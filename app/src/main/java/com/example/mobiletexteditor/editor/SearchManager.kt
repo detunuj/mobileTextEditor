@@ -1,3 +1,9 @@
+/**
+ * File: SearchManager.kt
+ * Purpose: Text search and replace engine. Implements case-sensitive / whole-word pattern searches,
+ *          forward/backward match navigation, single replacement, and bulk replace-all operations.
+ * Group Member: Member 1 — Editor Engine & File Management
+ */
 package com.example.mobiletexteditor.editor
 
 import com.example.mobiletexteditor.editor.model.SearchMatch
@@ -5,12 +11,12 @@ import com.example.mobiletexteditor.editor.model.SearchResult
 import java.util.regex.Pattern
 
 /**
- * Manages search, search-and-replace, and match navigation.
+ * Text search and replace engine with case-sensitivity and whole-word matching.
  */
 object SearchManager {
 
     /**
-     * Executes a search query on the provided [text].
+     * Executes a search for [query] across [text] with optional filters.
      */
     fun search(
         text: String,
@@ -33,54 +39,43 @@ object SearchManager {
         val matcher = pattern.matcher(text)
 
         val matches = mutableListOf<SearchMatch>()
-        val lines = text.split("\n")
-
         while (matcher.find()) {
-            val start = matcher.start()
-            val end = matcher.end()
-
-            // Calculate line number
-            val prefix = text.substring(0, start)
-            val lineNumber = prefix.count { it == '\n' } + 1
-            val lineText = if (lineNumber - 1 in lines.indices) lines[lineNumber - 1] else ""
-
             matches.add(
                 SearchMatch(
-                    startIndex = start,
-                    endIndex = end,
-                    lineNumber = lineNumber,
-                    lineText = lineText
+                    startIndex = matcher.start(),
+                    endIndex = matcher.end(),
+                    matchedText = matcher.group()
                 )
             )
         }
 
+        val activeIndex = if (matches.isNotEmpty()) 0 else -1
+
         return SearchResult(
             query = query,
             matches = matches,
-            currentMatchIndex = if (matches.isNotEmpty()) 0 else -1,
+            currentMatchIndex = activeIndex,
             isCaseSensitive = isCaseSensitive,
             isMatchWholeWord = isMatchWholeWord
         )
     }
 
     /**
-     * Advances to the next match in the search results list.
+     * Advances to the next match occurrence.
      */
     fun findNext(currentResult: SearchResult): SearchResult {
         if (!currentResult.hasMatches) return currentResult
-
-        val nextIndex = (currentResult.currentMatchIndex + 1) % currentResult.matches.size
+        val nextIndex = (currentResult.currentMatchIndex + 1) % currentResult.totalMatches
         return currentResult.copy(currentMatchIndex = nextIndex)
     }
 
     /**
-     * Reverses to the previous match in the search results list.
+     * Moves to the previous match occurrence.
      */
     fun findPrevious(currentResult: SearchResult): SearchResult {
         if (!currentResult.hasMatches) return currentResult
-
         val prevIndex = if (currentResult.currentMatchIndex <= 0) {
-            currentResult.matches.size - 1
+            currentResult.totalMatches - 1
         } else {
             currentResult.currentMatchIndex - 1
         }
@@ -88,9 +83,7 @@ object SearchManager {
     }
 
     /**
-     * Replaces the currently selected match with [replacement] text.
-     *
-     * @return Pair(updatedText, updatedSearchResult)
+     * Replaces the currently focused match with [replacement] and returns the updated text.
      */
     fun replaceCurrent(
         text: String,
@@ -99,26 +92,32 @@ object SearchManager {
     ): Pair<String, SearchResult> {
         val activeMatch = searchResult.activeMatch ?: return Pair(text, searchResult)
 
-        val newText = StringBuilder(text)
-            .replace(activeMatch.startIndex, activeMatch.endIndex, replacement)
-            .toString()
+        val newText = text.substring(0, activeMatch.startIndex) +
+                replacement +
+                text.substring(activeMatch.endIndex)
 
-        val updatedResult = search(
+        // Re-execute search on new text
+        val updatedSearchResult = search(
             text = newText,
             query = searchResult.query,
             isCaseSensitive = searchResult.isCaseSensitive,
             isMatchWholeWord = searchResult.isMatchWholeWord
         )
 
-        // Try to maintain approximate match index
-        val targetIndex = searchResult.currentMatchIndex.coerceAtMost(updatedResult.matches.size - 1)
-        return Pair(newText, updatedResult.copy(currentMatchIndex = targetIndex.coerceAtLeast(if (updatedResult.hasMatches) 0 else -1)))
+        // Maintain relative match index
+        val newIndex = if (updatedSearchResult.hasMatches) {
+            searchResult.currentMatchIndex.coerceAtMost(updatedSearchResult.totalMatches - 1)
+        } else {
+            -1
+        }
+
+        return Pair(newText, updatedSearchResult.copy(currentMatchIndex = newIndex))
     }
 
     /**
-     * Replaces all occurrences of [query] with [replacement].
+     * Replaces all match occurrences in [text] with [replacement].
      *
-     * @return Pair(updatedText, countOfReplacements)
+     * @return Pair(updatedText, totalReplacedCount)
      */
     fun replaceAll(
         text: String,
@@ -127,9 +126,7 @@ object SearchManager {
         isCaseSensitive: Boolean = false,
         isMatchWholeWord: Boolean = false
     ): Pair<String, Int> {
-        if (query.isEmpty() || text.isEmpty()) {
-            return Pair(text, 0)
-        }
+        if (query.isEmpty() || text.isEmpty()) return Pair(text, 0)
 
         val patternString = if (isMatchWholeWord) {
             "\\b${Pattern.quote(query)}\\b"
@@ -141,18 +138,9 @@ object SearchManager {
         val pattern = Pattern.compile(patternString, flags)
         val matcher = pattern.matcher(text)
 
-        var count = 0
-        val sb = StringBuffer()
-        while (matcher.find()) {
-            matcher.appendReplacement(sb, MatcherQuoteReplacement(replacement))
-            count++
-        }
-        matcher.appendTail(sb)
+        val count = search(text, query, isCaseSensitive, isMatchWholeWord).totalMatches
+        val newText = matcher.replaceAll(replacement)
 
-        return Pair(sb.toString(), count)
-    }
-
-    private fun MatcherQuoteReplacement(s: String): String {
-        return java.util.regex.Matcher.quoteReplacement(s)
+        return Pair(newText, count)
     }
 }

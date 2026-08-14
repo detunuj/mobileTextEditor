@@ -1,3 +1,9 @@
+/**
+ * File: UndoRedoManager.kt
+ * Purpose: Dedicated in-memory stack manager tracking granular edit history during the active session.
+ *          Provides reactive Compose states for undo/redo availability and state manipulation.
+ * Group Member: Member 1 — Editor Engine & File Management
+ */
 package com.example.mobiletexteditor.editor
 
 import androidx.compose.runtime.getValue

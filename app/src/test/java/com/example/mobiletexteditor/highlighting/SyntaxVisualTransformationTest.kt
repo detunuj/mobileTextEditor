@@ -1,3 +1,9 @@
+/**
+ * File: SyntaxVisualTransformationTest.kt
+ * Purpose: Unit tests validating the visual transformation pipeline, ensuring both language syntax
+ *          and in-editor search highlights are properly attached to the rendered AnnotatedString.
+ * Group Member: Member 2 — Syntax Highlighting & Recovery
+ */
 package com.example.mobiletexteditor.highlighting
 
 import androidx.compose.ui.text.AnnotatedString

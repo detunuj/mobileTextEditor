@@ -1,7 +1,12 @@
+/**
+ * File: FileManager.kt
+ * Purpose: Handles device storage file lifecycle operations including New, Open, Save, and Save As
+ *          with multi-encoding support (UTF-8, UTF-16, US-ASCII, ISO-8859-1) and recent files tracking.
+ * Group Member: Member 1 — Editor Engine & File Management
+ */
 package com.example.mobiletexteditor.editor
 
 import android.content.Context
-import android.content.SharedPreferences
 import com.example.mobiletexteditor.editor.model.EditorFile
 import com.example.mobiletexteditor.editor.model.FileEncoding
 import kotlinx.coroutines.Dispatchers
@@ -9,155 +14,130 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.nio.charset.Charset
 
 /**
- * Handles device file lifecycle: Open, New, Recent Files, Save, and Save As with encoding options.
+ * Handles all file system I/O, encoding/decoding, and recent file tracking.
  */
 class FileManager(private val context: Context) {
 
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("editor_file_prefs", Context.MODE_PRIVATE)
-
-    companion object {
-        private const val KEY_RECENT_FILES = "recent_files_list"
-        private const val MAX_RECENT_FILES = 10
+    private val documentsDir: File = File(context.filesDir, "documents").apply {
+        if (!exists()) mkdirs()
     }
 
-    /**
-     * Returns the default app-internal documents directory.
-     */
-    fun getDocumentsDirectory(): File {
-        val dir = File(context.filesDir, "documents")
-        if (!dir.exists()) {
-            dir.mkdirs()
-        }
-        return dir
-    }
+    private val recentFilesList = mutableListOf<File>()
 
     /**
-     * Initializes a new, unsaved file session.
+     * Creates a new blank file representation in memory.
      */
     fun createNewFile(name: String = "Untitled.kt"): EditorFile {
         return EditorFile(
-            file = null,
-            name = name,
             path = "",
+            name = name,
             encoding = FileEncoding.UTF_8,
-            isReadOnly = false,
             isModified = false,
-            lastModifiedTimestamp = System.currentTimeMillis()
+            isReadOnly = false
         )
     }
 
     /**
-     * Reads a file from disk with the specified [encoding].
+     * Reads and decodes a file from local storage using the specified character encoding.
      */
-    suspend fun openFile(
-        file: File,
-        encoding: FileEncoding = FileEncoding.UTF_8
-    ): Result<Pair<EditorFile, String>> = withContext(Dispatchers.IO) {
-        try {
-            if (!file.exists() || !file.canRead()) {
-                return@withContext Result.failure(IllegalArgumentException("File does not exist or is not readable: ${file.path}"))
-            }
-
-            val text = FileInputStream(file).use { stream ->
-                stream.bufferedReader(encoding.charset).readText()
-            }
-
-            val editorFile = EditorFile(
-                file = file,
-                name = file.name,
-                path = file.absolutePath,
-                encoding = encoding,
-                isReadOnly = !file.canWrite(),
-                isModified = false,
-                lastModifiedTimestamp = file.lastModified()
-            )
-
-            addRecentFile(file.absolutePath)
-            Result.success(Pair(editorFile, text))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Reads a file from disk given its absolute path.
-     */
-    suspend fun openFileFromPath(
-        path: String,
-        encoding: FileEncoding = FileEncoding.UTF_8
-    ): Result<Pair<EditorFile, String>> {
-        return openFile(File(path), encoding)
-    }
-
-    /**
-     * Saves changes directly to an existing [editorFile].
-     */
-    suspend fun saveFile(
-        editorFile: EditorFile,
-        content: String
-    ): Result<EditorFile> = withContext(Dispatchers.IO) {
-        try {
-            val targetFile = editorFile.file
-                ?: File(getDocumentsDirectory(), editorFile.name)
-
-            if (editorFile.isReadOnly) {
-                return@withContext Result.failure(IllegalStateException("Cannot save a read-only file."))
-            }
-
-            FileOutputStream(targetFile).use { stream ->
-                stream.bufferedWriter(editorFile.encoding.charset).use { writer ->
-                    writer.write(content)
-                    writer.flush()
+    suspend fun openFile(file: File, encoding: FileEncoding = FileEncoding.UTF_8): Result<Pair<EditorFile, String>> =
+        withContext(Dispatchers.IO) {
+            try {
+                if (!file.exists()) {
+                    return@withContext Result.failure(IllegalArgumentException("File does not exist: ${file.absolutePath}"))
                 }
+
+                val charset = Charset.forName(encoding.charsetName)
+                val content = FileInputStream(file).use { stream ->
+                    stream.bufferedReader(charset).readText()
+                }
+
+                recordRecentFile(file)
+
+                val editorFile = EditorFile(
+                    path = file.absolutePath,
+                    name = file.name,
+                    encoding = encoding,
+                    isModified = false,
+                    isReadOnly = !file.canWrite(),
+                    lastModifiedTimestamp = file.lastModified()
+                )
+
+                Result.success(Pair(editorFile, content))
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-
-            val updatedFile = editorFile.copy(
-                file = targetFile,
-                path = targetFile.absolutePath,
-                name = targetFile.name,
-                isModified = false,
-                lastModifiedTimestamp = targetFile.lastModified()
-            )
-
-            addRecentFile(targetFile.absolutePath)
-            Result.success(updatedFile)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
-    }
 
     /**
-     * Saves content as a new file with specified name and encoding.
+     * Saves the current text buffer to the active file path.
+     */
+    suspend fun saveFile(editorFile: EditorFile, content: String): Result<EditorFile> =
+        withContext(Dispatchers.IO) {
+            try {
+                val targetFile = if (editorFile.path.isBlank()) {
+                    File(documentsDir, editorFile.name)
+                } else {
+                    File(editorFile.path)
+                }
+
+                val charset = Charset.forName(editorFile.encoding.charsetName)
+                FileOutputStream(targetFile).use { stream ->
+                    stream.bufferedWriter(charset).use { writer ->
+                        writer.write(content)
+                        writer.flush()
+                    }
+                }
+
+                recordRecentFile(targetFile)
+
+                val updatedFile = editorFile.copy(
+                    path = targetFile.absolutePath,
+                    name = targetFile.name,
+                    isModified = false,
+                    lastModifiedTimestamp = targetFile.lastModified()
+                )
+
+                Result.success(updatedFile)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Saves the current text buffer to a new file name and encoding (Save As).
      */
     suspend fun saveFileAs(
-        targetDirectory: File = getDocumentsDirectory(),
         fileName: String,
         content: String,
         encoding: FileEncoding = FileEncoding.UTF_8
     ): Result<EditorFile> = withContext(Dispatchers.IO) {
         try {
-            val destination = File(targetDirectory, fileName)
-            FileOutputStream(destination).use { stream ->
-                stream.bufferedWriter(encoding.charset).use { writer ->
+            val safeFileName = if (fileName.isBlank()) "Untitled.kt" else fileName
+            val targetFile = File(documentsDir, safeFileName)
+
+            val charset = Charset.forName(encoding.charsetName)
+            FileOutputStream(targetFile).use { stream ->
+                stream.bufferedWriter(charset).use { writer ->
                     writer.write(content)
                     writer.flush()
                 }
             }
 
+            recordRecentFile(targetFile)
+
             val editorFile = EditorFile(
-                file = destination,
-                name = destination.name,
-                path = destination.absolutePath,
+                path = targetFile.absolutePath,
+                name = targetFile.name,
                 encoding = encoding,
-                isReadOnly = false,
                 isModified = false,
-                lastModifiedTimestamp = destination.lastModified()
+                isReadOnly = false,
+                lastModifiedTimestamp = targetFile.lastModified()
             )
 
-            addRecentFile(destination.absolutePath)
             Result.success(editorFile)
         } catch (e: Exception) {
             Result.failure(e)
@@ -165,54 +145,24 @@ class FileManager(private val context: Context) {
     }
 
     /**
-     * Lists all saved files in the app documents folder.
+     * Retrieves all saved files in the internal documents folder.
      */
-    fun listLocalFiles(): List<File> {
-        val dir = getDocumentsDirectory()
-        return dir.listFiles { file -> file.isFile }?.toList()?.sortedByDescending { it.lastModified() }
-            ?: emptyList()
+    suspend fun listSavedFiles(): List<File> = withContext(Dispatchers.IO) {
+        documentsDir.listFiles()?.filter { it.isFile }?.sortedByDescending { it.lastModified() } ?: emptyList()
     }
 
     /**
-     * Adds a file path to the recent files history list.
+     * Returns the list of recently accessed files.
      */
-    fun addRecentFile(path: String) {
-        if (path.isBlank()) return
-        val current = getRecentFiles().toMutableList()
-        current.remove(path)
-        current.add(0, path)
-        if (current.size > MAX_RECENT_FILES) {
-            current.subList(MAX_RECENT_FILES, current.size).clear()
+    fun getRecentFiles(): List<File> {
+        return recentFilesList.filter { it.exists() }
+    }
+
+    private fun recordRecentFile(file: File) {
+        recentFilesList.remove(file)
+        recentFilesList.add(0, file)
+        if (recentFilesList.size > 10) {
+            recentFilesList.removeAt(recentFilesList.lastIndex)
         }
-        prefs.edit().putString(KEY_RECENT_FILES, current.joinToString(";")).apply()
-    }
-
-    /**
-     * Retrieves the list of recently opened file paths.
-     */
-    fun getRecentFiles(): List<String> {
-        val raw = prefs.getString(KEY_RECENT_FILES, "") ?: ""
-        if (raw.isBlank()) return emptyList()
-        return raw.split(";").filter { it.isNotBlank() && File(it).exists() }
-    }
-
-    /**
-     * Clears the recent files history.
-     */
-    fun clearRecentFiles() {
-        prefs.edit().remove(KEY_RECENT_FILES).apply()
-    }
-
-    /**
-     * Deletes a local file.
-     */
-    fun deleteLocalFile(file: File): Boolean {
-        val deleted = file.delete()
-        if (deleted) {
-            val current = getRecentFiles().toMutableList()
-            current.remove(file.absolutePath)
-            prefs.edit().putString(KEY_RECENT_FILES, current.joinToString(";")).apply()
-        }
-        return deleted
     }
 }

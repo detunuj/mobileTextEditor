@@ -1,3 +1,9 @@
+/**
+ * File: MarkdownHighlighter.kt
+ * Purpose: In-editor syntax highlighter for Markdown documents. Formats headers, bold/italics,
+ *          inline code, code blocks, blockquotes, and lists with uniform line height.
+ * Group Member: Member 2 — Syntax Highlighting & Recovery
+ */
 package com.example.mobiletexteditor.highlighting
 
 import androidx.compose.ui.graphics.Color

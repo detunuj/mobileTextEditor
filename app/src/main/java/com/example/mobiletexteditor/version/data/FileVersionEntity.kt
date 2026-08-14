@@ -1,3 +1,9 @@
+/**
+ * File: FileVersionEntity.kt
+ * Purpose: Room database entity representing an incremental snapshot. Stores baseline text for v1
+ *          and compact unified diff deltas for subsequent versions, eliminating storage duplication.
+ * Group Member: Member 3 — Version Control & Database
+ */
 package com.example.mobiletexteditor.version.data
 
 import androidx.room.Entity

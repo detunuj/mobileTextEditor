@@ -1,3 +1,9 @@
+/**
+ * File: VersionManager.kt
+ * Purpose: Central coordinator for the version control system. Orchestrates snapshot creation,
+ *          Room SQLite persistence, historical diff comparisons, and file rollback restorations.
+ * Group Member: Member 3 — Version Control & Database
+ */
 package com.example.mobiletexteditor.version
 
 import android.content.Context

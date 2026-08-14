@@ -1,3 +1,9 @@
+/**
+ * File: VersionHistoryDialog.kt
+ * Purpose: Modal timeline dialog displaying saved version snapshots with version tags, change metrics,
+ *          diff comparison triggers, and rollback restoration actions.
+ * Group Member: Member 3 — Version Control & Database
+ */
 package com.example.mobiletexteditor.version.ui
 
 import androidx.compose.foundation.background

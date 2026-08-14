@@ -1,3 +1,9 @@
+/**
+ * File: EditorManager.kt
+ * Purpose: Central controller for editor buffer state, cursor, word-wrap toggles, read-only mode,
+ *          font size adjustments, language syntax modes, undo/redo triggers, and search coordinator.
+ * Group Member: Member 1 — Editor Engine & File Management
+ */
 package com.example.mobiletexteditor.editor
 
 import android.content.Context

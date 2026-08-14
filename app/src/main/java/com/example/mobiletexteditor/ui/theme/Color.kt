@@ -1,3 +1,8 @@
+/**
+ * File: Color.kt
+ * Purpose: Color palette definitions for dark and light Material 3 themes in the mobile text editor.
+ * Group Members: Member 1, Member 2, and Member 3
+ */
 package com.example.mobiletexteditor.ui.theme
 
 import androidx.compose.ui.graphics.Color
