@@ -2,6 +2,7 @@ package com.example.mobiletexteditor.editor.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,8 +18,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.WrapText
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
@@ -26,19 +31,16 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Redo
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.WrapText
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,7 +56,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -62,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mobiletexteditor.editor.EditorLanguage
 import com.example.mobiletexteditor.editor.EditorManager
 import com.example.mobiletexteditor.editor.model.FileEncoding
 import com.example.mobiletexteditor.highlighting.CrashRecoveryManager
@@ -97,6 +102,7 @@ fun MainEditorScreen() {
     var showMarkdownPreview by remember { mutableStateOf(false) }
     var showSnapshotDialog by remember { mutableStateOf(false) }
     var showHistoryDialog by remember { mutableStateOf(false) }
+    var showLanguageMenu by remember { mutableStateOf(false) }
     var pendingRecoveryDraft by remember { mutableStateOf<RecoveryDraft?>(null) }
 
     // Start 10-second background auto-backup loop & check for crash draft on init
@@ -189,7 +195,7 @@ fun MainEditorScreen() {
                     TopAppBar(
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                val fileIcon = if (editorManager.activeFile.isKotlin) Icons.Default.Code else Icons.Default.Description
+                                val fileIcon = if (editorManager.isKotlinLanguage) Icons.Default.Code else Icons.Default.Description
                                 Icon(
                                     imageVector = fileIcon,
                                     contentDescription = null,
@@ -221,13 +227,21 @@ fun MainEditorScreen() {
                                 onClick = { editorManager.undo() },
                                 enabled = editorManager.canUndo && !editorManager.isReadOnly
                             ) {
-                                Icon(Icons.Default.Undo, contentDescription = "Undo")
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Undo,
+                                    contentDescription = "Undo",
+                                    tint = if (editorManager.canUndo && !editorManager.isReadOnly) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                )
                             }
                             IconButton(
                                 onClick = { editorManager.redo() },
                                 enabled = editorManager.canRedo && !editorManager.isReadOnly
                             ) {
-                                Icon(Icons.Default.Redo, contentDescription = "Redo")
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Redo,
+                                    contentDescription = "Redo",
+                                    tint = if (editorManager.canRedo && !editorManager.isReadOnly) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                )
                             }
 
                             // Member 1: Search & Replace
@@ -236,7 +250,7 @@ fun MainEditorScreen() {
                             }
 
                             // Member 2: Markdown Preview Panel (if markdown)
-                            if (editorManager.activeFile.isMarkdown) {
+                            if (editorManager.isMarkdownLanguage) {
                                 IconButton(onClick = { showMarkdownPreview = true }) {
                                     Icon(Icons.Default.Visibility, contentDescription = "Markdown Preview")
                                 }
@@ -257,7 +271,7 @@ fun MainEditorScreen() {
                         )
                     )
 
-                    // Secondary Quick Toolbar: Word wrap, Read-only, Font size
+                    // Secondary Quick Toolbar: Word wrap, Read-only, Font size controls
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -274,7 +288,7 @@ fun MainEditorScreen() {
                                 // Word wrap toggle
                                 IconButton(onClick = { editorManager.isWordWrapEnabled = !editorManager.isWordWrapEnabled }) {
                                     Icon(
-                                        imageVector = Icons.Default.WrapText,
+                                        imageVector = Icons.AutoMirrored.Filled.WrapText,
                                         contentDescription = "Toggle Word Wrap",
                                         tint = if (editorManager.isWordWrapEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                                     )
@@ -290,33 +304,50 @@ fun MainEditorScreen() {
                                 }
                             }
 
-                            // Font size controls
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "A-",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
+                            // Font size controls (A- and A+ buttons)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Surface(
                                     modifier = Modifier
-                                        .padding(horizontal = 8.dp)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                        .clip(CircleShape)
+                                        .clickable { editorManager.decreaseFontSize() },
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = CircleShape
+                                ) {
+                                    Text(
+                                        text = "A-",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
                                 Text(
                                     text = "${editorManager.fontSizeSp.toInt()} sp",
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 4.dp)
                                 )
-                                Text(
-                                    text = "A+",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
+
+                                Surface(
                                     modifier = Modifier
-                                        .padding(horizontal = 8.dp)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                        .clip(CircleShape)
+                                        .clickable { editorManager.increaseFontSize() },
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = CircleShape
+                                ) {
+                                    Text(
+                                        text = "A+",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
@@ -339,21 +370,34 @@ fun MainEditorScreen() {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                // Editor Main Canvas (Line Numbers + Highlighting Buffer)
+                // Editor Main Canvas: Synchronized Line Numbers + Syntax Highlighted BasicTextField
+                val lineCount = remember(editorManager.textContent) {
+                    editorManager.textContent.lines().size.coerceAtLeast(1)
+                }
+
+                val verticalScroll = rememberScrollState()
+                val horizontalScroll = rememberScrollState()
+
+                val currentFontSize = editorManager.fontSizeSp.sp
+                val currentLineHeight = (editorManager.fontSizeSp * 1.5f).sp
+
+                val editorTextStyle = TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = currentFontSize,
+                    lineHeight = currentLineHeight,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
+                        .background(MaterialTheme.colorScheme.surface)
                 ) {
-                    val lineCount = remember(editorManager.textContent) {
-                        editorManager.textContent.lines().size.coerceAtLeast(1)
-                    }
-
-                    // Line Numbers Gutter
-                    val verticalScroll = rememberScrollState()
+                    // Synchronized Line Numbers Gutter
                     Column(
                         modifier = Modifier
-                            .width(44.dp)
+                            .width(46.dp)
                             .fillMaxHeight()
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                             .verticalScroll(verticalScroll)
@@ -363,7 +407,8 @@ fun MainEditorScreen() {
                             Text(
                                 text = "$i",
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = editorManager.fontSizeSp.sp,
+                                fontSize = currentFontSize,
+                                lineHeight = currentLineHeight,
                                 color = MaterialTheme.colorScheme.outline,
                                 textAlign = TextAlign.End,
                                 modifier = Modifier.fillMaxWidth()
@@ -371,40 +416,42 @@ fun MainEditorScreen() {
                         }
                     }
 
-                    // Real-Time Syntax Highlighted Text Field
-                    val horizontalScroll = rememberScrollState()
+                    // Synchronized Real-Time Syntax Highlighted Buffer
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 8.dp)
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .verticalScroll(verticalScroll)
+                            .then(
+                                if (!editorManager.isWordWrapEnabled) {
+                                    Modifier.horizontalScroll(horizontalScroll)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .padding(horizontal = 10.dp, vertical = 12.dp)
                     ) {
-                        OutlinedTextField(
+                        BasicTextField(
                             value = editorManager.textContent,
                             onValueChange = { editorManager.updateContent(it) },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .then(
-                                    if (!editorManager.isWordWrapEnabled) {
-                                        Modifier.horizontalScroll(horizontalScroll)
-                                    } else {
-                                        Modifier
-                                    }
-                                ),
+                            modifier = Modifier.fillMaxWidth(),
                             readOnly = editorManager.isReadOnly,
-                            textStyle = TextStyle(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = editorManager.fontSizeSp.sp,
-                                lineHeight = (editorManager.fontSizeSp * 1.4f).sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
+                            textStyle = editorTextStyle,
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             visualTransformation = SyntaxVisualTransformation(
-                                isKotlin = editorManager.activeFile.isKotlin,
-                                isMarkdown = editorManager.activeFile.isMarkdown
+                                isKotlin = editorManager.isKotlinLanguage,
+                                isMarkdown = editorManager.isMarkdownLanguage,
+                                searchResult = editorManager.searchResult
                             ),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent
-                            )
+                            decorationBox = { innerTextField ->
+                                if (editorManager.textContent.isEmpty()) {
+                                    Text(
+                                        text = "Start typing code...",
+                                        style = editorTextStyle.copy(color = MaterialTheme.colorScheme.outline)
+                                    )
+                                }
+                                innerTextField()
+                            }
                         )
                     }
                 }
@@ -428,12 +475,44 @@ fun MainEditorScreen() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Text(
-                            text = if (editorManager.activeFile.isKotlin) "Kotlin (Auto-Highlight)" else if (editorManager.activeFile.isMarkdown) "Markdown" else "Plain Text",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        // Language Mode Selector Chip (Click to switch between Kotlin, Markdown, Plain Text)
+                        Box {
+                            val activeLangName = when {
+                                editorManager.isKotlinLanguage -> "Kotlin"
+                                editorManager.isMarkdownLanguage -> "Markdown"
+                                else -> "Plain Text"
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { showLanguageMenu = true }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "$activeLangName ▾",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = showLanguageMenu,
+                                onDismissRequest = { showLanguageMenu = false }
+                            ) {
+                                EditorLanguage.entries.forEach { lang ->
+                                    DropdownMenuItem(
+                                        text = { Text(lang.displayName) },
+                                        onClick = {
+                                            editorManager.languageOverride = lang
+                                            showLanguageMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

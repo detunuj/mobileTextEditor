@@ -12,6 +12,16 @@ import com.example.mobiletexteditor.editor.model.UndoRedoState
 import java.io.File
 
 /**
+ * Language syntax modes supported by the editor.
+ */
+enum class EditorLanguage(val displayName: String) {
+    AUTO("Auto-Detect"),
+    KOTLIN("Kotlin"),
+    MARKDOWN("Markdown"),
+    PLAIN_TEXT("Plain Text")
+}
+
+/**
  * Central state controller for Member 1 (Editor Engine & File Management).
  */
 class EditorManager(
@@ -30,11 +40,33 @@ class EditorManager(
     var isReadOnly by mutableStateOf(false)
     var fontSizeSp by mutableFloatStateOf(14f)
 
+    var languageOverride by mutableStateOf(EditorLanguage.AUTO)
+
     var searchResult by mutableStateOf(SearchResult())
         private set
 
     val canUndo: Boolean get() = undoRedoManager.canUndo
     val canRedo: Boolean get() = undoRedoManager.canRedo
+
+    /**
+     * Resolves whether Kotlin syntax highlighting should be active.
+     */
+    val isKotlinLanguage: Boolean get() = when (languageOverride) {
+        EditorLanguage.KOTLIN -> true
+        EditorLanguage.MARKDOWN -> false
+        EditorLanguage.PLAIN_TEXT -> false
+        EditorLanguage.AUTO -> activeFile.isKotlin
+    }
+
+    /**
+     * Resolves whether Markdown syntax highlighting should be active.
+     */
+    val isMarkdownLanguage: Boolean get() = when (languageOverride) {
+        EditorLanguage.MARKDOWN -> true
+        EditorLanguage.KOTLIN -> false
+        EditorLanguage.PLAIN_TEXT -> false
+        EditorLanguage.AUTO -> activeFile.isMarkdown
+    }
 
     /**
      * Updates the editor text buffer and pushes state to undo stack.
@@ -72,20 +104,38 @@ class EditorManager(
     }
 
     fun undo() {
-        if (isReadOnly) return
+        if (isReadOnly || !canUndo) return
         val previousState = undoRedoManager.undo(UndoRedoState(text = textContent))
         if (previousState != null) {
             textContent = previousState.text
             activeFile = activeFile.copy(isModified = true)
+            if (searchResult.query.isNotEmpty()) {
+                performSearch(searchResult.query, searchResult.isCaseSensitive, searchResult.isMatchWholeWord)
+            }
         }
     }
 
     fun redo() {
-        if (isReadOnly) return
+        if (isReadOnly || !canRedo) return
         val nextState = undoRedoManager.redo(UndoRedoState(text = textContent))
         if (nextState != null) {
             textContent = nextState.text
             activeFile = activeFile.copy(isModified = true)
+            if (searchResult.query.isNotEmpty()) {
+                performSearch(searchResult.query, searchResult.isCaseSensitive, searchResult.isMatchWholeWord)
+            }
+        }
+    }
+
+    fun increaseFontSize() {
+        if (fontSizeSp < 32f) {
+            fontSizeSp += 2f
+        }
+    }
+
+    fun decreaseFontSize() {
+        if (fontSizeSp > 10f) {
+            fontSizeSp -= 2f
         }
     }
 
@@ -94,6 +144,7 @@ class EditorManager(
         textContent = ""
         undoRedoManager.clear()
         isReadOnly = false
+        languageOverride = EditorLanguage.AUTO
     }
 
     suspend fun openFile(file: File, encoding: FileEncoding = FileEncoding.UTF_8): Result<Unit> {
@@ -102,6 +153,7 @@ class EditorManager(
             activeFile = openedFile
             textContent = content
             isReadOnly = openedFile.isReadOnly
+            languageOverride = EditorLanguage.AUTO
             undoRedoManager.clear()
         }
     }

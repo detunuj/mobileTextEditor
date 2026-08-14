@@ -1,5 +1,5 @@
 [versions]
-agp = "9.2.1"
+agp = "9.3.1"
 coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -10,7 +10,7 @@ kotlin = "2.2.10"
 composeBom = "2024.10.01"
 
 room = "2.7.0"
-ksp = "2.2.10-2.0.2"
+ksp = "2.3.6"
 javaDiffUtils = "4.12"
 composeMaterialIconsExtended = "1.7.8"
 

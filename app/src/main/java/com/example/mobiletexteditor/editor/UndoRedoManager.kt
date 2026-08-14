@@ -1,17 +1,29 @@
 package com.example.mobiletexteditor.editor
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.example.mobiletexteditor.editor.model.UndoRedoState
 
 /**
  * Dedicated system memory stack tracking granular edits during the active session.
+ * Exposes reactive Compose state for canUndo and canRedo.
  */
 class UndoRedoManager(private val maxStackSize: Int = 100) {
 
     private val undoStack = ArrayDeque<UndoRedoState>()
     private val redoStack = ArrayDeque<UndoRedoState>()
 
-    val canUndo: Boolean get() = undoStack.isNotEmpty()
-    val canRedo: Boolean get() = redoStack.isNotEmpty()
+    var canUndo by mutableStateOf(false)
+        private set
+
+    var canRedo by mutableStateOf(false)
+        private set
+
+    private fun updateState() {
+        canUndo = undoStack.isNotEmpty()
+        canRedo = redoStack.isNotEmpty()
+    }
 
     /**
      * Pushes a new state to the undo history stack.
@@ -28,6 +40,7 @@ class UndoRedoManager(private val maxStackSize: Int = 100) {
 
         undoStack.addLast(state)
         redoStack.clear()
+        updateState()
     }
 
     /**
@@ -41,6 +54,7 @@ class UndoRedoManager(private val maxStackSize: Int = 100) {
 
         val previousState = undoStack.removeLast()
         redoStack.addLast(currentState)
+        updateState()
         return previousState
     }
 
@@ -55,6 +69,7 @@ class UndoRedoManager(private val maxStackSize: Int = 100) {
 
         val nextState = redoStack.removeLast()
         undoStack.addLast(currentState)
+        updateState()
         return nextState
     }
 
@@ -64,6 +79,7 @@ class UndoRedoManager(private val maxStackSize: Int = 100) {
     fun clear() {
         undoStack.clear()
         redoStack.clear()
+        updateState()
     }
 
     val undoCount: Int get() = undoStack.size
