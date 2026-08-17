@@ -10,14 +10,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import java.util.regex.Pattern
 
-/**
- * In-editor syntax highlighter for Markdown documents.
- */
+
+ // In-editor syntax highlighter for Markdown documents.//
+
 object MarkdownHighlighter {
 
     val HeaderColor = Color(0xFF64B5F6)      // Light Blue
     val BoldColor = Color(0xFFFFB74D)        // Amber
     val ItalicColor = Color(0xFFCE93D8)      // Lavender
+
     val CodeColor = Color(0xFF81C784)        // Mint Green
     val CodeBlockBgColor = Color(0x2281C784) // Soft green tint
     val LinkColor = Color(0xFF4DD0E1)        // Cyan
@@ -34,8 +35,8 @@ object MarkdownHighlighter {
     private val QUOTE_PATTERN = Pattern.compile("(?m)^>\\s+.*$")
     private val LIST_PATTERN = Pattern.compile("(?m)^(\\s*[-*+]|\\s*\\d+\\.)\\s+")
 
-    /**
-     * Highlights in-editor Markdown syntax.
+    /*
+      Highlights in-editor Markdown syntax.
      */
     fun highlight(text: String): AnnotatedString {
         if (text.isEmpty()) return AnnotatedString("")

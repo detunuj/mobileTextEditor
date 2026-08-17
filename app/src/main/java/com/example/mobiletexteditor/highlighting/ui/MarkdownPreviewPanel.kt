@@ -44,8 +44,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
-/**
- * Toggleable Markdown Preview Panel parsing and rendering styled Markdown text.
+/*
+  Toggleable Markdown Preview Panel parsing and rendering styled Markdown text.
  */
 @Composable
 fun MarkdownPreviewPanel(

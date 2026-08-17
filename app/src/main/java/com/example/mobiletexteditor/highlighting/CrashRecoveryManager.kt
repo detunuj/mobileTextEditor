@@ -14,8 +14,8 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 
-/**
- * Data container for an unsaved recovery draft discovered upon launch.
+/*
+  Data container for an unsaved recovery draft discovered upon launch.
  */
 data class RecoveryDraft(
     val filePath: String,
@@ -24,10 +24,10 @@ data class RecoveryDraft(
     val recoveredContent: String
 )
 
-/**
- * CrashRecoveryManager provides automated fault tolerance:
- * 1. Background Auto-Backup: Periodically writes active editor buffer to temporary cache (every 10s).
- * 2. Crash Detection & Recovery: Detects uncommitted buffer caches upon restart and restores unsaved work.
+/*
+  CrashRecoveryManager provides automated fault tolerance:
+  1. Background Auto-Backup: s active editor buffer to temporary cache (every 10s).
+  2. Crash Detection & Recovery: Detects unsaved caches upon restart and restores unsaved work.
  */
 class CrashRecoveryManager(private val context: Context) {
 
@@ -38,8 +38,8 @@ class CrashRecoveryManager(private val context: Context) {
     private var autoBackupJob: Job? = null
     private var lastSavedHash: String = ""
 
-    /**
-     * Computes a safe file key for backup mapping based on file path.
+    /*
+     Computes a safe file key for backup mapping based on file path.
      */
     private fun getBackupFile(filePath: String): File {
         val safeName = if (filePath.isBlank()) {
@@ -52,8 +52,8 @@ class CrashRecoveryManager(private val context: Context) {
         return File(backupDir, safeName)
     }
 
-    /**
-     * Saves a recovery draft cache file immediately to disk.
+    /*
+      Saves a recovery draft cache file immediately to disk.
      */
     suspend fun saveBackup(
         filePath: String,
@@ -82,11 +82,9 @@ class CrashRecoveryManager(private val context: Context) {
         }
     }
 
-    /**
-     * Checks if an unsaved recovery draft exists for the given file.
-     *
-     * @param filePath The file to check.
-     * @param originalFileLastModified The modification timestamp of the original file.
+    /*
+      Checks if an unsaved recovery draft exists for the given file.
+
      */
     suspend fun checkForRecoveryDraft(
         filePath: String,
@@ -124,8 +122,8 @@ class CrashRecoveryManager(private val context: Context) {
         }
     }
 
-    /**
-     * Clears and deletes the backup cache when user explicitly saves or discards.
+    /*
+     Clears and deletes the backup cache when user explicitly saves or discards.
      */
     suspend fun clearBackup(filePath: String) = withContext(Dispatchers.IO) {
         val backupFile = getBackupFile(filePath)
@@ -135,8 +133,8 @@ class CrashRecoveryManager(private val context: Context) {
         lastSavedHash = ""
     }
 
-    /**
-     * Starts the automated 10-second background backup loop.
+    /*
+      Starts the automated 10-second background backup loop.
      */
     fun startAutoBackup(
         scope: CoroutineScope,
@@ -158,8 +156,8 @@ class CrashRecoveryManager(private val context: Context) {
         }
     }
 
-    /**
-     * Stops the background auto-backup loop.
+    /*
+     Stops the background auto-backup loop.
      */
     fun stopAutoBackup() {
         autoBackupJob?.cancel()

@@ -8,8 +8,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import java.util.regex.Pattern
 
-/**
- * Tokenizes and applies syntax highlighting for Kotlin source code.
+/*
+    applies syntax highlighting for Kotlin source code.
  */
 object KotlinHighlighter {
 
@@ -18,6 +18,7 @@ object KotlinHighlighter {
     val StringColor = Color(0xFF81C784)        // Green
     val CommentColor = Color(0xFF888888)       // Muted Gray
     val AnnotationColor = Color(0xFFFFB74D)    // Amber / Gold
+
     val NumberColor = Color(0xFFFF8A65)        // Coral / Orange
 
     val KEYWORDS = setOf(
@@ -45,8 +46,8 @@ object KotlinHighlighter {
     private val COMMENT_LINE_PATTERN = Pattern.compile("//.*")
     private val COMMENT_BLOCK_PATTERN = Pattern.compile("/\\*[\\s\\S]*?\\*/")
 
-    /**
-     * Highlights [text] with Kotlin syntax rules and returns an [AnnotatedString].
+    /*
+         Highlights [text] with Kotlin syntax rules .
      */
     fun highlight(text: String, defaultColor: Color = Color.Unspecified): AnnotatedString {
         if (text.isEmpty()) return AnnotatedString("")

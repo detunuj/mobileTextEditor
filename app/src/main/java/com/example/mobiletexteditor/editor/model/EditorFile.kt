@@ -4,9 +4,7 @@ import java.io.File
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
-/**
- * Supported text encodings for opening and saving files.
- */
+
 enum class FileEncoding(val displayName: String, val charset: Charset) {
     UTF_8("UTF-8", StandardCharsets.UTF_8),
     UTF_16("UTF-16", StandardCharsets.UTF_16),
@@ -20,8 +18,8 @@ enum class FileEncoding(val displayName: String, val charset: Charset) {
     }
 }
 
-/**
- * Represents the active file opened in the editor.
+/*
+  Represents the active file opened in the editor.
  */
 data class EditorFile(
     val file: File? = null,

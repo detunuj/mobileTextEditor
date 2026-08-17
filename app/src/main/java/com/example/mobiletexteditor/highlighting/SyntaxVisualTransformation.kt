@@ -10,11 +10,7 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import java.util.regex.Pattern
 
-/**
- * High-performance Compose VisualTransformation that dynamically applies:
- * 1. Language syntax highlighting (Kotlin & Markdown)
- * 2. Visual in-editor Find highlights for all search matches (with active match highlighted in amber/orange).
- */
+//configurations for highlighting
 class SyntaxVisualTransformation(
     private val isKotlin: Boolean,
     private val isMarkdown: Boolean,
@@ -24,20 +20,21 @@ class SyntaxVisualTransformation(
     private val isMatchWholeWord: Boolean = false
 ) : VisualTransformation {
 
+    // colors configuration of search results
     private val allMatchesBgColor = Color(0x99FFE082)   // Soft warm yellow for all matches
     private val allMatchesTextColor = Color(0xFF1B1B1F)  // High contrast text
     private val activeMatchBgColor = Color(0xFFFF9800)   // Vibrant orange for active match
     private val activeMatchTextColor = Color.White       // White text on orange
 
     override fun filter(text: AnnotatedString): TransformedText {
-        // 1. Apply base syntax highlighting
+        // 1.base syntax - highlighting
         val syntaxHighlighted: AnnotatedString = when {
             isKotlin -> KotlinHighlighter.highlight(text.text)
             isMarkdown -> MarkdownHighlighter.highlight(text.text)
-            else -> text
+            else -> text // no text styles for txt files
         }
 
-        // 2. Overlay Find & Replace search match highlights if a search term is present
+        // 2. if nothing to search return
         if (searchQuery.isEmpty() || text.text.isEmpty()) {
             return TransformedText(syntaxHighlighted, OffsetMapping.Identity)
         }

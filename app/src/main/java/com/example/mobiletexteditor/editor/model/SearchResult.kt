@@ -1,7 +1,7 @@
 package com.example.mobiletexteditor.editor.model
 
-/**
- * Snapshot of text and cursor selection in the undo/redo stack.
+/*
+  Snapshot of text and cursor selection in the undo/redo stack.
  */
 data class UndoRedoState(
     val text: String,
@@ -9,8 +9,8 @@ data class UndoRedoState(
     val selectionEnd: Int = 0
 )
 
-/**
- * Represents a single search match in the editor text.
+/*
+ Represents a single search match in the editor text.
  */
 data class SearchMatch(
     val startIndex: Int,
@@ -19,8 +19,8 @@ data class SearchMatch(
     val lineText: String
 )
 
-/**
- * Result container for active search query state.
+/*
+  Result container for active search query state.
  */
 data class SearchResult(
     val query: String = "",

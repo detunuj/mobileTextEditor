@@ -3,6 +3,7 @@ package com.example.mobiletexteditor.editor.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -103,11 +104,14 @@ fun FileSidebarDrawer(
                         onCloseDrawer()
                     },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp, horizontal = 4.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("New")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("New", style = MaterialTheme.typography.labelSmall)
+                    }
                 }
 
                 FilledTonalButton(
@@ -116,11 +120,43 @@ fun FileSidebarDrawer(
                         onCloseDrawer()
                     },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp, horizontal = 4.dp)
                 ) {
-                    Icon(Icons.Default.Save, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Save")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Save, contentDescription = null)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Save", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+
+                // Delete Current File Button
+                FilledTonalButton(
+                    onClick = {
+                        val file = File(activeFilePath)
+                        if (file.exists()) {
+                            fileManager.deleteLocalFile(file)
+                            onNewFile()
+                        }
+                        onCloseDrawer()
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp, horizontal = 4.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Delete",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
                 }
             }
 

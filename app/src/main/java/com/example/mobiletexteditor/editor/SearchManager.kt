@@ -4,13 +4,13 @@ import com.example.mobiletexteditor.editor.model.SearchMatch
 import com.example.mobiletexteditor.editor.model.SearchResult
 import java.util.regex.Pattern
 
-/**
- * Manages search, search-and-replace, and match navigation.
+/*
+  Manages search, search-and-replace, and match navigation.
  */
 object SearchManager {
 
-    /**
-     * Executes a search query on the provided [text].
+    /*
+      Executes a search query on the provided [text].
      */
     fun search(
         text: String,

@@ -13,8 +13,8 @@ import com.example.mobiletexteditor.editor.model.SearchResult
 import com.example.mobiletexteditor.editor.model.UndoRedoState
 import java.io.File
 
-/**
- * Central state controller for Member 1 (Editor Engine & File Management).
+/*
+  Editor Engine & File Management
  */
 class EditorManager(
     val fileManager: FileManager,
@@ -40,8 +40,8 @@ class EditorManager(
     val canUndo: Boolean get() = undoRedoManager.canUndo
     val canRedo: Boolean get() = undoRedoManager.canRedo
 
-    /**
-     * Increases overall editor zoom (font size).
+    /*
+    Increases  font size.
      */
     fun zoomIn() {
         if (fontSizeSp < 32f) {
@@ -49,8 +49,8 @@ class EditorManager(
         }
     }
 
-    /**
-     * Decreases overall editor zoom (font size).
+    /*
+     Decreases font size.
      */
     fun zoomOut() {
         if (fontSizeSp > 10f) {
@@ -58,8 +58,8 @@ class EditorManager(
         }
     }
 
-    /**
-     * Updates the editor text buffer and pushes state to undo stack.
+    /*
+      Updates the editor text buffer and pushes state to undo stack.
      */
     fun updateContent(newValue: TextFieldValue, pushToUndo: Boolean = true) {
         if (isReadOnly) return
@@ -100,8 +100,8 @@ class EditorManager(
         )
     }
 
-    /**
-     * Directly sets editor content without pushing to undo (e.g. on open or rollback).
+    /*
+      Directly sets editor content without pushing to undo.
      */
     fun setContentDirectly(newText: String, markModified: Boolean = false) {
         textFieldValue = TextFieldValue(text = newText, selection = TextRange(0))

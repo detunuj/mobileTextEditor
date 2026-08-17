@@ -10,8 +10,8 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
-/**
- * Handles device file lifecycle: Open, New, Recent Files, Save, and Save As with encoding options.
+/*
+  Open, New, Recent Files, Save, and Save As with encoding options.
  */
 class FileManager(private val context: Context) {
 
@@ -23,8 +23,8 @@ class FileManager(private val context: Context) {
         private const val MAX_RECENT_FILES = 10
     }
 
-    /**
-     * Returns the default app-internal documents directory.
+    /*
+     Returns the default app-internal documents directory.
      */
     fun getDocumentsDirectory(): File {
         val dir = File(context.filesDir, "documents")
@@ -34,8 +34,8 @@ class FileManager(private val context: Context) {
         return dir
     }
 
-    /**
-     * Initializes a new, unsaved file session.
+    /*
+     Initializes a new, unsaved file session.
      */
     fun createNewFile(name: String = "Untitled.kt"): EditorFile {
         return EditorFile(
@@ -49,8 +49,8 @@ class FileManager(private val context: Context) {
         )
     }
 
-    /**
-     * Reads a file from disk with the specified [encoding].
+    /*
+      Reads a file from disk.
      */
     suspend fun openFile(
         file: File,
@@ -83,7 +83,7 @@ class FileManager(private val context: Context) {
     }
 
     /**
-     * Reads a file from disk given its absolute path.
+        Reads a file from disk given its absolute path.
      */
     suspend fun openFileFromPath(
         path: String,
@@ -92,8 +92,8 @@ class FileManager(private val context: Context) {
         return openFile(File(path), encoding)
     }
 
-    /**
-     * Saves changes directly to an existing [editorFile].
+    /*
+     Saves changes directly to an existing file
      */
     suspend fun saveFile(
         editorFile: EditorFile,
@@ -129,8 +129,8 @@ class FileManager(private val context: Context) {
         }
     }
 
-    /**
-     * Saves content as a new file with specified name and encoding.
+    /*
+     Saves content as a new file with specified name and encoding.
      */
     suspend fun saveFileAs(
         targetDirectory: File = getDocumentsDirectory(),
@@ -164,8 +164,8 @@ class FileManager(private val context: Context) {
         }
     }
 
-    /**
-     * Lists all saved files in the app documents folder.
+    /*
+     Lists all saved files in the app documents folder.
      */
     fun listLocalFiles(): List<File> {
         val dir = getDocumentsDirectory()
@@ -173,8 +173,8 @@ class FileManager(private val context: Context) {
             ?: emptyList()
     }
 
-    /**
-     * Adds a file path to the recent files history list.
+    /*
+     Adds a file path to the recent files history list.
      */
     fun addRecentFile(path: String) {
         if (path.isBlank()) return
@@ -187,8 +187,8 @@ class FileManager(private val context: Context) {
         prefs.edit().putString(KEY_RECENT_FILES, current.joinToString(";")).apply()
     }
 
-    /**
-     * Retrieves the list of recently opened file paths.
+    /*
+     Retrieves the list of recently opened file paths.
      */
     fun getRecentFiles(): List<String> {
         val raw = prefs.getString(KEY_RECENT_FILES, "") ?: ""
@@ -196,15 +196,15 @@ class FileManager(private val context: Context) {
         return raw.split(";").filter { it.isNotBlank() && File(it).exists() }
     }
 
-    /**
-     * Clears the recent files history.
+    /*
+     Clears the recent files history.
      */
     fun clearRecentFiles() {
         prefs.edit().remove(KEY_RECENT_FILES).apply()
     }
 
-    /**
-     * Deletes a local file.
+    /*
+      Deletes a local file.
      */
     fun deleteLocalFile(file: File): Boolean {
         val deleted = file.delete()

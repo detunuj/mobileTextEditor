@@ -26,8 +26,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Dialog alerting the user to restore unsaved work after an app crash or interruption.
+/*
+  Dialog alerting the user to restore unsaved work after an app crash or interruption.
  */
 @Composable
 fun CrashRecoveryDialog(
